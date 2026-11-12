@@ -1,0 +1,3007 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/png" href="/logo.png">
+<title>Cortana</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0a0c0b;
+    --panel:#0f1311;
+    --line:#222924;
+    --line-2:#2e3731;
+    --text:#e8ebe5;
+    --muted:#8b948d;
+    --dim:#68716b;
+    --accent:#a9e6a1;
+    --accent-soft:rgba(169,230,161,.12);
+    --user:#19221e;
+    --danger:#e2867c;
+    --radius:16px;
+    --sans:ui-sans-serif,"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Cascadia Code",ui-monospace,Consolas,"SF Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;
+    background:var(--bg);color:var(--text);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background:
+      radial-gradient(600px 320px at 50% -8%,rgba(169,230,161,.07),transparent 70%),
+      radial-gradient(900px 500px at 90% 110%,rgba(120,160,150,.04),transparent 70%);
+  }
+  button{font-family:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- top bar ---------- */
+  header{
+    position:relative;z-index:5;display:flex;align-items:center;gap:14px;
+    padding:11px 18px;border-bottom:1px solid var(--line);
+    background:rgba(10,12,11,.78);backdrop-filter:blur(14px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.01em;white-space:nowrap;min-width:0}
+  .brand-name{overflow:hidden;text-overflow:ellipsis}
+  .brand svg{width:22px;height:22px;color:var(--accent);flex:none}
+  .brand .tag{
+    font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--accent);background:var(--accent-soft);border:1px solid rgba(169,230,161,.18);
+    padding:2px 7px;border-radius:999px;margin-left:2px;
+  }
+  .spacer{flex:1}
+  .model-wrap{position:relative;display:flex;align-items:center;min-width:0}  #modelSelect{
+    appearance:none;max-width:250px;min-width:130px;width:auto;padding:7px 30px 7px 11px;
+    border:1px solid var(--line-2);border-radius:9px;background:#121714;color:var(--text);
+    font-size:12.5px;font-family:var(--mono);text-overflow:ellipsis;cursor:pointer;
+  }
+  #modelSelect:hover{border-color:#3d4a42}
+  .model-wrap::after{
+    content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;pointer-events:none;
+    border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);
+    transform:translateY(-70%) rotate(45deg);
+  }
+  .icon{
+    display:grid;place-items:center;width:34px;height:34px;border-radius:9px;
+    color:var(--muted);transition:background .15s,color .15s;
+  }
+  .icon:hover{background:#181d1a;color:var(--text)}
+  .icon svg{width:17px;height:17px}
+  .net{
+    display:flex;align-items:center;justify-content:center;gap:6px;height:34px;min-width:78px;
+    padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:#0e1311;
+    color:var(--muted);font-size:11px;letter-spacing:.02em;white-space:nowrap;
+    transition:border-color .15s,color .15s,background .15s,opacity .15s;
+  }
+  .net:hover{border-color:#3d4a42;color:var(--text)}
+  .net .dot{width:6px;height:6px}
+  .net.online .dot{background:var(--accent)}
+  .net.offline .dot{background:var(--dim)}
+  .net.blocked{border-color:rgba(169,230,161,.42);background:var(--accent-soft);color:var(--accent)}
+  .net.blocked .dot{background:var(--accent);box-shadow:0 0 7px rgba(169,230,161,.55)}
+  .net.busy{opacity:.5;pointer-events:none}
+  .ip-chip{
+    display:flex;align-items:center;gap:6px;height:34px;max-width:180px;padding:0 10px;
+    border-radius:9px;border:1px solid var(--line-2);background:#0e1311;color:var(--muted);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.01em;white-space:nowrap;
+    transition:border-color .15s,color .15s,opacity .15s;
+  }
+  .ip-chip:hover{border-color:#3d4a42;color:var(--text)}
+  .ip-chip svg{width:13px;height:13px;flex:none;opacity:.8}
+  .ip-chip span{overflow:hidden;text-overflow:ellipsis}
+  .ip-chip.set{color:var(--text);border-color:#3a4740;background:#121815}
+  .ip-chip.busy{opacity:.5;pointer-events:none}
+  .spin svg{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- chat ---------- */
+  main{position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;scrollbar-gutter:stable}
+  main::-webkit-scrollbar{width:10px}
+  main::-webkit-scrollbar-thumb{background:#232a25;border:3px solid var(--bg);border-radius:99px}
+  main::-webkit-scrollbar-thumb:hover{background:#303a33}
+
+  #messages{width:100%;max-width:800px;margin:0 auto;padding:26px 22px 10px;display:flex;flex-direction:column;gap:24px}
+  .msg{display:flex;flex-direction:column;animation:rise .18s ease-out}
+  @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .msg.user{align-items:flex-end}
+  .msg.user .body{
+    max-width:78%;background:var(--user);border:1px solid #26312a;border-radius:16px 16px 5px 16px;
+    padding:10px 14px;font-size:14.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;
+  }
+  .msg.assistant .body{font-size:15px;line-height:1.72;overflow-wrap:anywhere;min-height:1.2em}
+  .msg.assistant.streaming .body::after{
+    content:"▍";color:var(--accent);margin-left:2px;animation:blink 1s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:.15}}
+  .msg .body p{margin:0 0 .8em}
+  .msg .body p:last-child{margin-bottom:0}
+  .msg .body h1,.msg .body h2,.msg .body h3,.msg .body h4{margin:1.2em 0 .5em;line-height:1.3;font-weight:600}
+  .msg .body h1{font-size:1.35em}.msg .body h2{font-size:1.2em}.msg .body h3{font-size:1.07em}
+  .msg .body h1:first-child,.msg .body h2:first-child,.msg .body h3:first-child{margin-top:0}
+  .msg .body ul,.msg .body ol{margin:.1em 0 .9em;padding-left:1.4em}
+  .msg .body li{margin:.18em 0}
+  .msg .body blockquote{margin:.3em 0 .9em;padding:.1em 0 .1em 14px;border-left:2px solid var(--line-2);color:var(--muted)}
+  .msg .body hr{border:0;border-top:1px solid var(--line-2);margin:1.3em 0}
+  .msg .body a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+  .msg .body code{
+    font-family:var(--mono);font-size:.87em;background:#1a211d;border:1px solid #28322c;
+    padding:1.5px 5px;border-radius:5px;
+  }
+  .code{margin:.5em 0 1em;border:1px solid var(--line-2);border-radius:10px;overflow:hidden;background:#0c100e}
+  .code-head{display:flex;align-items:center;justify-content:space-between;padding:5px 8px 5px 12px;border-bottom:1px solid var(--line);min-height:30px}
+  .code-head span{font-size:10.5px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .code-head .copy{font-size:10.5px;color:var(--dim);padding:3px 7px;border-radius:5px;letter-spacing:.03em}
+  .code-head .copy:hover{background:#1c231f;color:var(--text)}
+  .code pre{margin:0;padding:12px 14px;overflow-x:auto}
+  .msg .body .code code{background:none;border:0;padding:0;font-size:12.5px;line-height:1.6;white-space:pre}
+  .msg .foot{display:flex;align-items:center;gap:8px;margin-top:7px;opacity:0;transition:opacity .15s}
+  .msg.user .foot{justify-content:flex-end}
+  .msg:hover .foot,.msg.streaming .foot{opacity:1}
+  .msg .act{
+    display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--dim);
+    padding:3px 7px;border-radius:6px;border:1px solid transparent;letter-spacing:.02em;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .msg .act:hover{background:#181d1a;color:var(--text);border-color:var(--line)}
+  .msg .tokens{font-size:10px;font-family:var(--mono);color:var(--dim);margin-left:auto;white-space:nowrap}
+  .msg .act-regen{display:none}
+  .msg.assistant:last-child .act-regen{display:inline-flex}
+  .msg.user .body.hidden + .atts{margin-top:0}
+  .msg.user .atts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:7px;max-width:78%}
+  .att-thumb{width:104px;height:78px;border-radius:9px;overflow:hidden;border:1px solid var(--line-2);background:#0c100e}
+  .att-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .att-file{
+    display:inline-flex;align-items:center;gap:6px;max-width:200px;padding:5px 8px;
+    border:1px solid var(--line-2);border-radius:7px;background:#0d1210;color:var(--muted);
+    font-size:10.5px;font-family:var(--mono);
+  }
+  .att-file svg{width:12px;height:12px;flex:none;opacity:.7}
+  .att-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .edit{width:100%;max-width:640px;display:flex;flex-direction:column;gap:8px}
+  .edit textarea{min-height:86px;background:#101512;font-size:14px;line-height:1.6}
+  .edit .edit-atts{display:flex;flex-wrap:wrap;gap:6px}
+  .edit .edit-atts:empty{display:none}
+  .edit-actions{display:flex;justify-content:flex-end;gap:7px}
+  .edit-actions .mini{border-color:var(--line);background:#0e1311;padding:5px 10px}
+  .edit-actions .save{background:var(--accent);border-color:var(--accent);color:#0b130d;font-weight:600}
+  .edit-actions .save:hover{background:#bdf0b5;color:#0b130d;border-color:#bdf0b5}
+  @media (hover:none){.msg .foot{opacity:1}}
+  .mini{
+    font-size:11px;color:var(--dim);padding:3px 8px;border-radius:6px;border:1px solid transparent;
+    letter-spacing:.02em;transition:background .15s,color .15s,border-color .15s;
+  }
+  .mini:hover{background:#181d1a;color:var(--text);border-color:var(--line)}
+  .notice{
+    margin-top:10px;font-size:12.5px;color:var(--danger);background:rgba(226,134,124,.07);
+    border:1px solid rgba(226,134,124,.2);border-radius:8px;padding:8px 11px;white-space:pre-wrap;
+  }
+  .wait{color:var(--dim);letter-spacing:.25em}
+  .think{margin:0 0 12px;border-left:2px solid #2b3831;padding-left:12px}
+  .think summary{
+    cursor:pointer;list-style:none;font-size:11.5px;color:var(--dim);letter-spacing:.04em;
+    user-select:none;display:flex;align-items:center;gap:6px;width:fit-content;
+  }
+  .think summary::-webkit-details-marker{display:none}
+  .think summary::before{content:"▸";font-size:9px;transition:transform .15s;color:var(--dim)}
+  .think[open] summary::before{transform:rotate(90deg)}
+  .think summary:hover{color:var(--muted)}
+  .think-body{
+    margin-top:7px;font-size:12.5px;line-height:1.65;color:var(--muted);
+    white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow-y:auto;
+  }
+
+  /* ---------- empty state ---------- */
+  #empty{margin:auto;width:100%;max-width:640px;padding:30px 26px 56px;text-align:center;display:flex;flex-direction:column;align-items:center}
+  #empty.hidden{display:none}
+  #empty .mark{
+    width:54px;height:54px;color:var(--accent);margin-bottom:20px;
+    filter:drop-shadow(0 0 24px rgba(169,230,161,.22));
+  }
+  #empty h1{font-size:25px;font-weight:600;letter-spacing:-.015em;margin:0 0 10px}
+  #empty p{color:var(--muted);font-size:13.8px;line-height:1.65;margin:0;max-width:44ch}
+  #empty .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:26px}
+  .chip{
+    display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    border:1px solid var(--line-2);background:#101512;color:var(--muted);font-size:12px;
+    font-family:var(--mono);transition:border-color .15s,color .15s,background .15s;
+  }
+  .chip:hover{border-color:#4a5a50;color:var(--text);background:#151b17}
+  .chip.active{border-color:rgba(169,230,161,.45);color:var(--accent);background:var(--accent-soft)}
+  .chip .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.9}
+  .chip .unc{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);opacity:.75}
+  #empty .fallback{margin-top:24px;font-size:12.5px;color:var(--dim);line-height:1.7}
+  #empty .fallback code{font-family:var(--mono);color:var(--muted);background:#151b17;border:1px solid var(--line);padding:2px 6px;border-radius:5px;font-size:11.5px}
+
+  /* ---------- composer ---------- */
+  footer{position:relative;z-index:4;flex:none;padding:10px 20px 12px;background:linear-gradient(to top,var(--bg) 55%,rgba(10,12,11,0))}
+  .composer{width:100%;max-width:800px;margin:0 auto}
+  .box{
+    position:relative;display:flex;align-items:flex-end;
+    border:1px solid var(--line-2);border-radius:var(--radius);background:rgba(17,22,19,.94);
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .box:focus-within{border-color:rgba(169,230,161,.4);box-shadow:0 0 0 3px rgba(169,230,161,.05)}
+  #input{
+    flex:1;resize:none;border:0;outline:0;background:none;color:var(--text);
+    font-family:inherit;font-size:14.5px;line-height:1.55;padding:13px 54px 13px 46px;
+    min-height:48px;max-height:200px;
+  }
+  #input::placeholder{color:var(--dim)}
+  .attach-btn{
+    position:absolute;left:7px;bottom:7px;width:32px;height:32px;border-radius:8px;
+    display:grid;place-items:center;color:var(--dim);transition:background .15s,color .15s;
+  }
+  .attach-btn:hover{background:#1a211d;color:var(--text)}
+  .attach-btn svg{width:16px;height:16px}
+  .attach-tray{display:flex;flex-wrap:wrap;gap:8px;margin:0 auto 8px;padding:0 2px;max-width:800px}
+  .att{
+    position:relative;display:flex;align-items:center;gap:6px;overflow:hidden;
+    border:1px solid var(--line-2);border-radius:9px;background:#0e1311;
+  }
+  .att.image{width:58px;height:58px}
+  .att.image img{width:100%;height:100%;object-fit:cover;display:block}
+  .att.text{height:34px;max-width:240px;padding:0 3px 0 9px;color:var(--muted);font-size:10.5px;font-family:var(--mono)}
+  .att.text svg{width:12px;height:12px;flex:none;opacity:.7}
+  .att.text span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .att .att-x{
+    position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;
+    display:grid;place-items:center;background:rgba(6,8,7,.82);color:#d6ddd6;font-size:12px;line-height:1;
+  }
+  .att.text .att-x{position:static;background:none;color:var(--dim);width:20px;height:20px;flex:none}
+  .att.text .att-x:hover,.att.image .att-x:hover{color:var(--text)}
+  .send{
+    position:absolute;right:8px;bottom:8px;width:32px;height:32px;border-radius:9px;
+    display:grid;place-items:center;background:var(--accent);color:#0b130d;
+    transition:opacity .15s,transform .1s,background .15s;
+  }
+  .send:hover{transform:translateY(-1px)}
+  .send:active{transform:none}
+  .send:disabled{opacity:.35;cursor:default;transform:none}
+  .send svg{width:16px;height:16px}
+  .send.stop{background:#2a211f;color:var(--danger);border:1px solid #46322e}
+  .hidden{display:none!important}
+  .meta{
+    display:flex;align-items:center;gap:14px;padding:8px 4px 0;
+    font-size:11px;color:var(--dim);letter-spacing:.01em;
+  }
+  #status{display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex:none}
+  .dot.ok{background:var(--accent);box-shadow:0 0 7px rgba(169,230,161,.5)}
+  .dot.wait{background:#c9b06a;animation:pulse 1.2s ease-in-out infinite}
+  .dot.err{background:var(--danger)}
+  @keyframes pulse{50%{opacity:.25}}
+  #stats{color:var(--dim);font-family:var(--mono);font-size:10.5px}
+  .think-btn{
+    display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+    border:1px solid var(--line);background:#0e1311;color:var(--dim);font-size:10.5px;
+    letter-spacing:.01em;white-space:nowrap;transition:border-color .15s,color .15s,background .15s,opacity .15s;
+  }
+  .think-btn:hover{border-color:#3d4a42;color:var(--text)}
+  .think-btn svg{width:12px;height:12px;flex:none}
+  .think-btn.off{color:var(--accent);border-color:rgba(169,230,161,.35);background:var(--accent-soft)}
+  .think-btn:disabled{opacity:.5;cursor:default}
+  .privacy{margin-left:auto;color:#5c655f;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .privacy svg{width:11px;height:11px}
+
+  /* ---------- settings ---------- */
+  .backdrop{
+    position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);
+    opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .backdrop.show{opacity:1;pointer-events:auto}
+  .settings{
+    position:fixed;top:0;right:0;bottom:0;z-index:21;width:min(400px,100%);
+    background:var(--panel);border-left:1px solid var(--line);
+    display:flex;flex-direction:column;
+    transform:translateX(101%);transition:transform .22s cubic-bezier(.4,0,.2,1);
+  }
+  .settings.open{transform:none}
+  .help-panel{width:min(520px,100%)}
+  .set-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 13px;border-bottom:1px solid var(--line);flex:none}
+  .set-head h2{font-size:14px;font-weight:600;margin:0;letter-spacing:.01em}
+  .set-body{overflow-y:auto;padding:4px 18px 24px;flex:1}
+  .set-body::-webkit-scrollbar{width:8px}
+  .set-body::-webkit-scrollbar-thumb{background:#242b26;border-radius:9px}
+  .set-body section{padding:18px 0;border-bottom:1px solid var(--line)}
+  .set-body section:last-of-type{border-bottom:0}
+  .label-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+  .label-row label,.label-row>span:first-child{font-size:12px;font-weight:500;color:var(--text);letter-spacing:.01em}
+  .label-row>span,.label-row output{font-size:11px;color:var(--dim)}
+  .label-row output{font-family:var(--mono);color:var(--muted)}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .switch-copy{min-width:0}
+  .switch-title{font-size:12px;font-weight:500;color:var(--text);letter-spacing:.01em;margin-bottom:4px}
+  .switch-sub{font-size:11px;line-height:1.5;color:var(--dim)}
+  .switch{position:relative;display:inline-flex;flex:none;width:36px;height:20px;cursor:pointer}
+  .switch input{position:absolute;opacity:0;width:0;height:0}
+  .switch span{position:absolute;inset:0;border-radius:999px;background:#252e28;border:1px solid var(--line-2);transition:background .15s,border-color .15s}
+  .switch span::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8b948d;transition:transform .15s,background .15s}
+  .switch input:checked + span{background:rgba(169,230,161,.16);border-color:rgba(169,230,161,.45)}
+  .switch input:checked + span::after{transform:translateX(16px);background:var(--accent)}
+  .switch input:disabled + span{opacity:.4;cursor:default}
+  textarea,input[type=text],input:not([type]),select{
+    width:100%;border:1px solid var(--line-2);border-radius:8px;background:#0d1110;
+    color:var(--text);font-family:inherit;font-size:13px;padding:9px 10px;outline:0;
+    transition:border-color .15s;
+  }
+  textarea:focus,input:focus,select:focus{border-color:rgba(169,230,161,.4)}
+  textarea{resize:vertical;min-height:96px;line-height:1.55}
+  textarea::placeholder,input::placeholder{color:#5a635d}
+  .row-btns{display:flex;gap:7px;margin-top:8px}
+  .row-btns .mini{border-color:var(--line);background:#0e1311}
+  input[type=range]{
+    width:100%;appearance:none;height:3px;border-radius:9px;background:var(--line-2);outline:0;margin:5px 0 0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);
+    border:2px solid #0d1110;box-shadow:0 0 0 1px rgba(169,230,161,.35);cursor:pointer;
+  }
+  .inline{display:flex;gap:7px}
+  .inline input{flex:1;font-family:var(--mono);font-size:11.5px}
+  .inline .mini{flex:none;border:1px solid var(--line-2);background:#141a16;padding:0 12px;border-radius:8px;color:var(--muted)}
+  .hint{margin:7px 0 0;font-size:11px;line-height:1.5;color:var(--dim);min-height:1em}
+  .hint.good{color:var(--accent)}
+  .hint.bad{color:var(--danger)}
+  .ip-details{font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--dim);white-space:pre-wrap;overflow-wrap:anywhere}
+  .ip-details b{color:var(--muted);font-weight:500}
+  .providers{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .providers li{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  .providers .name{color:var(--text);font-family:var(--sans);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .providers .count{color:var(--dim);font-size:10.5px}
+  .providers .x{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+  .privacy-box{
+    font-size:11.5px;line-height:1.65;color:var(--muted);background:#0d1210;
+    border:1px solid var(--line);border-radius:9px;padding:11px 12px;margin-top:18px;
+  }
+  .privacy-box b{color:var(--text);font-weight:500}
+  .danger{
+    width:100%;margin-top:18px;padding:9px;border-radius:8px;font-size:12px;
+    border:1px solid rgba(226,134,124,.22);color:var(--danger);background:rgba(226,134,124,.06);
+    transition:background .15s;
+  }
+  .danger:hover{background:rgba(226,134,124,.12)}
+  .secondary{
+    width:100%;margin-top:18px;padding:9px;border-radius:8px;font-size:12px;
+    border:1px solid var(--line-2);color:var(--muted);background:#0e1311;
+    transition:border-color .15s,color .15s,background .15s;
+  }
+  .secondary:hover{border-color:#3d4a42;color:var(--text);background:#141a16}
+  .secondary + .danger{margin-top:10px}
+
+  /* ---------- how to use ---------- */
+  .empty-help{
+    margin-top:16px;padding:2px 0;font-size:12px;color:var(--dim);
+    border-bottom:1px solid transparent;transition:color .15s,border-color .15s;
+  }
+  .empty-help:hover{color:var(--accent);border-color:rgba(169,230,161,.35)}
+  .help-body section{padding:16px 0}
+  .help-body h3{
+    margin:0 0 9px;font-size:10.5px;font-weight:600;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--accent);
+  }
+  .help-body p{margin:0 0 8px;font-size:12.5px;line-height:1.68;color:var(--muted)}
+  .help-body p:last-child{margin-bottom:0}
+  .help-body ul{margin:0 0 8px;padding-left:17px}
+  .help-body li{margin:4px 0;font-size:12.5px;line-height:1.62;color:var(--muted)}
+  .help-body b{color:var(--text);font-weight:500}
+  .help-body code{
+    font-family:var(--mono);font-size:.88em;color:#cfe4cc;background:#161d19;
+    border:1px solid #27322b;border-radius:4px;padding:1px 4px;
+  }
+  .help-body kbd{
+    display:inline-block;font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--text);
+    background:#1a211d;border:1px solid #303a33;border-bottom-width:2px;border-radius:4px;
+    padding:0 5px;white-space:nowrap;
+  }
+  .help-body table.keys{width:100%;border-collapse:collapse}
+  .help-body table.keys td{
+    padding:4px 0;font-size:12px;color:var(--muted);vertical-align:top;
+  }
+  .help-body table.keys td:first-child{width:42%;white-space:nowrap}
+  .help-foot{
+    margin:12px 0 6px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:11px;line-height:1.6;color:var(--dim);
+  }
+  .help-foot code{font-family:var(--mono);color:var(--muted)}
+
+  /* ---------- model guide ---------- */
+  .guide-panel{width:min(600px,100%)}
+  .guide-head-actions{display:flex;align-items:center;gap:6px}
+  .guide-head-actions .mini{border:1px solid var(--line-2);background:#141a16;padding:5px 10px;border-radius:7px}
+  .guide-body section{padding:16px 0}
+  .guide-body h3{margin:0 0 8px;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .guide-note{margin:6px 0 0;font-size:11px;line-height:1.55;color:var(--dim)}
+  .guide-loaded{display:flex;flex-wrap:wrap;gap:7px}
+  .guide-loaded-empty{font-size:11.5px;color:var(--dim)}
+  .guide-load-card{display:flex;align-items:center;gap:7px;max-width:100%;padding:6px 9px;border:1px solid var(--line-2);border-radius:8px;background:#0d1210;font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .guide-load-card .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
+  .guide-load-card b{color:var(--text);font-weight:500}
+  .guide-load-card .model{color:var(--dim);font-size:10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .guide-load-card .state{color:var(--dim);font-size:10px}
+  .guide-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0 10px}
+  .guide-tab{padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:#0e1311;color:var(--dim);font-size:10.5px;letter-spacing:.02em;transition:background .15s,color .15s,border-color .15s}
+  .guide-tab:hover{background:#181d1a;color:var(--text)}
+  .guide-tab.active{color:var(--accent);border-color:rgba(169,230,161,.45);background:var(--accent-soft)}
+  .guide-sort-hint{margin:0 0 10px;font-size:11px;line-height:1.5;color:var(--dim)}
+  .guide-list{display:flex;flex-direction:column;gap:8px}
+  .guide-row{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0d1210}
+  .guide-row.current{border-color:rgba(169,230,161,.35);background:#101a14}
+  .guide-rank{width:22px;flex:none;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim)}
+  .guide-row:first-child .guide-rank{color:var(--accent)}
+  .guide-main{flex:1;min-width:0}
+  .guide-title{display:flex;align-items:baseline;gap:7px;min-width:0}
+  .guide-alias{font-family:var(--mono);font-size:12px;color:var(--text);font-weight:600;white-space:nowrap}
+  .guide-full{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .guide-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .guide-tag{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:1px 4px;white-space:nowrap}
+  .guide-tag.loaded{color:var(--accent);border-color:rgba(169,230,161,.3);background:var(--accent-soft)}
+  .guide-tag.vision{color:#b9d2e8;border-color:rgba(130,180,225,.28)}
+  .guide-tag.audio{color:#dcc9a4;border-color:rgba(220,190,130,.28)}
+  .guide-note-row{margin:4px 0 0;font-size:11px;line-height:1.45;color:var(--muted)}
+  .guide-score{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex:none}
+  .guide-bar{width:54px;height:4px;border-radius:999px;background:#1b231e;overflow:hidden;flex:none}
+  .guide-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#5d8a62,var(--accent))}
+  .guide-score b{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500;min-width:20px;text-align:right}
+  .guide-score.na b{color:var(--dim)}
+  .guide-use{flex:none;border:1px solid var(--line-2);background:#141a16;padding:5px 9px;border-radius:7px;color:var(--muted);font-size:10.5px}
+  .guide-use:hover{background:#1a211d;color:var(--text)}
+  .guide-use:disabled{color:var(--accent);border-color:rgba(169,230,161,.3);background:var(--accent-soft);cursor:default}
+  .guide-unrated{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+  .guide-unrated-title{font-size:10px;color:var(--dim);letter-spacing:.09em;text-transform:uppercase;margin:0 0 8px}
+  .guide-support{display:flex;flex-direction:column;gap:8px}
+  .guide-support-row{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#0d1210}
+  .guide-support-row .dot{width:6px;height:6px;border-radius:50%;background:var(--dim);margin-top:5px;flex:none}
+  .guide-support-row .dot.on{background:var(--accent)}
+  .guide-support-row b{display:block;font-size:11.5px;color:var(--text);font-weight:500;font-family:var(--mono)}
+  .guide-support-row span{display:block;margin-top:2px;font-size:10.5px;line-height:1.5;color:var(--dim)}
+  .guide-disclaimer{margin:12px 0 0;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#0d1210;font-size:10.5px;line-height:1.6;color:var(--dim)}
+  @media (max-width:560px){
+    .guide-row{flex-wrap:wrap}
+    .guide-main{flex-basis:calc(100% - 31px)}
+    .guide-score{margin-left:31px}
+    .guide-use{margin-left:auto}
+  }
+
+  /* ---------- closed ---------- */
+  .bye{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:var(--bg);text-align:center;padding:24px}
+  .bye h2{font-size:20px;font-weight:600;margin:0 0 8px}
+  .bye p{color:var(--muted);font-size:13px;margin:0}
+
+  .toasts{
+    position:fixed;left:50%;bottom:104px;z-index:40;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    width:min(92vw,520px);pointer-events:none;
+  }
+  .toast{
+    pointer-events:auto;background:#151b18;border:1px solid var(--line-2);color:var(--text);
+    padding:9px 14px;border-radius:10px;font-size:12.5px;line-height:1.45;text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;transform:translateY(6px);
+    transition:opacity .2s,transform .2s;max-width:100%;
+  }
+  .toast.show{opacity:1;transform:none}
+  .toast.err{border-color:rgba(226,134,124,.38);color:#f0b8b2}
+
+  .drop-overlay{
+    position:fixed;inset:0;z-index:45;display:grid;place-items:center;
+    background:rgba(5,7,6,.82);backdrop-filter:blur(6px);pointer-events:none;
+  }
+  .drop-box{
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+    border:1px dashed rgba(169,230,161,.5);border-radius:18px;padding:34px 46px;
+    color:var(--accent);font-size:13.5px;background:rgba(13,18,15,.92);
+  }
+  .drop-box svg{width:28px;height:28px;opacity:.8}
+
+  @media (max-width:900px){
+    .ip-chip{display:none}
+  }
+  @media (max-width:640px){
+    header{padding:9px 12px;gap:8px}
+    .brand .tag{display:none}
+    #modelSelect{max-width:150px;min-width:0;font-size:11.5px}
+    header .icon{width:32px;height:32px}
+    #messages{padding:18px 14px 6px;gap:20px}
+    .msg.user .body{max-width:88%}
+    .msg.user .atts{max-width:88%}
+    footer{padding:8px 12px 10px}
+    #input{font-size:16px} /* prevent iOS zoom */
+    .privacy{display:none}
+    .think-btn span{display:none}
+    .think-btn{padding:3px 7px}
+    #empty{padding:24px 18px 40px}
+    #empty h1{font-size:22px}
+  }
+  @media (max-width:520px){
+    .brand-name{display:none}
+    header{gap:6px}
+    .net{padding:0 8px;min-width:0}
+    #refreshBtn{display:none}
+  }
+  @media (max-width:430px){
+    #modelSelect{max-width:110px}
+  }
+  @media (max-width:360px){
+    #modelSelect{max-width:90px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+      <path d="M12 2.6 20.2 7.3v9.4L12 21.4 3.8 16.7V7.3z"/>
+      <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+    </svg>
+    <span class="brand-name">Cortana</span>
+    <span class="tag">local</span>
+  </div>
+  <div class="spacer"></div>
+  <button id="netBtn" class="net" type="button" title="Internet killswitch" aria-pressed="false" aria-label="Internet killswitch">
+    <i class="dot"></i><span id="netText">Online</span>
+  </button>
+  <button id="ipBtn" class="ip-chip" type="button" title="Check your public IP (contacts an IP lookup service)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9h17.6M3.2 15h17.6M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+    <span id="ipText">Show IP</span>
+  </button>
+  <div class="model-wrap">
+    <select id="modelSelect" aria-label="Model"></select>
+  </div>
+  <button id="guideBtn" class="icon" title="Model guide — loaded models and best-fit rankings" aria-label="Model guide">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20v-6M10 20V7M15 20v-9M20 20V4"/></svg>
+  </button>
+  <button id="helpBtn" class="icon" title="How to use" aria-label="How to use">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.9 2.9 0 0 1 5.7.7c0 1.2-.9 1.7-1.7 2.3-.7.5-1.1 1-1.1 1.8"/><path d="M12 17.2h.01"/></svg>
+  </button>
+  <button id="refreshBtn" class="icon" title="Scan for local models" aria-label="Scan for local models">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+  </button>
+  <button id="settingsBtn" class="icon" title="Settings" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>
+  </button>
+  <button id="newBtn" class="icon" title="New chat" aria-label="New chat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+</header>
+
+<main id="chat">
+  <div id="messages" aria-live="polite"></div>
+  <div id="empty">
+    <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true">
+      <path d="M12 2.6 20.2 7.3v9.4L12 21.4 3.8 16.7V7.3z"/>
+      <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+      <path d="M12 2.6v6.9M20.2 7.3l-5.9 3.4M3.8 7.3l5.9 3.4M12 21.4v-7" opacity=".35"/>
+    </svg>
+    <h1>Your chat stays on this machine.</h1>
+    <p>Chat with the models already on your PC. Pick one below to start — the conversation lives only in this tab.</p>
+    <div class="chips" id="modelChips"></div>
+    <button id="emptyHelpBtn" class="empty-help" type="button">How to use this app</button>
+    <div class="fallback" id="emptyHint"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="composer">
+    <div id="attachTray" class="attach-tray hidden"></div>
+    <div class="box">
+      <button id="attachBtn" class="attach-btn" type="button" title="Attach images or text files — or paste a screenshot" aria-label="Attach files">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m20.5 11.5-8.6 8.6a5 5 0 0 1-7.1-7.1l9.2-9.2a3.4 3.4 0 0 1 4.8 4.8l-9.2 9.2a1.8 1.8 0 0 1-2.5-2.5l8.5-8.5"/></svg>
+      </button>
+      <textarea id="input" rows="1" placeholder="Message your local model…" autocomplete="off" spellcheck="true"></textarea>
+      <button id="send" class="send" title="Send (Enter)" aria-label="Send" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+      <button id="stop" class="send stop hidden" title="Stop (Esc)" aria-label="Stop">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+      </button>
+    </div>
+    <input id="fileInput" type="file" multiple hidden accept="image/*,.txt,.md,.markdown,.json,.jsonl,.csv,.tsv,.log,.xml,.yaml,.yml,.toml,.ini,.cfg,.conf,.js,.mjs,.cjs,.ts,.tsx,.jsx,.py,.rb,.php,.java,.kt,.go,.rs,.c,.h,.cpp,.hpp,.cs,.swift,.sh,.bash,.zsh,.ps1,.bat,.cmd,.sql,.html,.htm,.css,.scss,.less,.vue,.svelte,.r,.lua,.pl,.tex">
+    <div class="meta">
+      <span id="status"><i class="dot wait"></i>Scanning…</span>
+      <span id="stats"></span>
+      <button id="thinkBtn" class="think-btn" type="button" title="Toggle model reasoning" aria-label="Toggle model reasoning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.5.4.8 1 .8 1.6V16h5.6v-.6c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3z"/></svg>
+        <span id="thinkText">Reasoning on</span>
+      </button>
+      <span class="privacy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        no chat logs · no storage
+      </span>
+    </div>
+  </div>
+</footer>
+
+<div id="backdrop" class="backdrop"></div>
+
+<div id="dropOverlay" class="drop-overlay hidden">
+  <div class="drop-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+    <span>Drop images or text files</span>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<aside id="settings" class="settings" aria-hidden="true" aria-label="Settings">
+  <div class="set-head">
+    <h2>Settings</h2>
+    <button id="closeSettings" class="icon" aria-label="Close settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="set-body">
+    <section>
+      <div class="label-row"><label for="systemPrompt">System prompt</label><span>optional</span></div>
+      <textarea id="systemPrompt" rows="5" placeholder="Set the model's behaviour…"></textarea>
+      <div class="row-btns">
+        <button id="presetDirect" class="mini">Direct preset</button>
+        <button id="clearSystem" class="mini">Clear</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="label-row"><label for="temp">Temperature</label><output id="tempVal">0.80</output></div>
+      <input id="temp" type="range" min="0" max="2" step="0.05" value="0.8">
+    </section>
+
+    <section>
+      <div class="switch-row">
+        <div class="switch-copy">
+          <div class="switch-title">Reasoning</div>
+          <div class="switch-sub" id="reasoningHint">Let the model think before answering. Turn off for instant replies.</div>
+        </div>
+        <label class="switch" title="Toggle model reasoning">
+          <input id="reasoning" type="checkbox" checked>
+          <span></span>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <div class="label-row"><label for="ctx">Context window</label><span>Ollama only</span></div>
+      <select id="ctx">
+        <option value="2048">2,048 tokens</option>
+        <option value="4096">4,096 tokens</option>
+        <option value="8192" selected>8,192 tokens</option>
+        <option value="16384">16,384 tokens</option>
+        <option value="32768">32,768 tokens</option>
+      </select>
+    </section>
+
+    <section>
+      <div class="label-row"><label for="extraEndpoint">Add endpoint</label><span>OpenAI-compatible</span></div>
+      <div class="inline">
+        <input id="extraEndpoint" placeholder="http://127.0.0.1:1234" autocomplete="off" spellcheck="false">
+        <button id="addEndpoint" class="mini">Connect</button>
+      </div>
+      <p id="extraMsg" class="hint"></p>
+    </section>
+
+    <section>
+      <div class="label-row"><span>Connection</span><button id="checkIpBtn" class="mini">Check IP</button></div>
+      <div id="ipDetails" class="ip-details">Public IP not checked. Checking contacts an external IP lookup service.</div>
+    </section>
+
+    <section>
+      <div class="label-row"><span>Detected sources</span><button id="rescan" class="mini">Rescan</button></div>
+      <ul id="providerList" class="providers"></ul>
+    </section>
+
+    <div class="privacy-box">
+      <b>Stateless by design.</b> Messages exist only in this tab's memory. No history, cookies, or localStorage, and no chat logs. The killswitch stores only an on/off adapter list. Closing the tab erases the conversation.
+    </div>
+
+    <button id="settingsHelpBtn" class="secondary">How to use — feature guide</button>
+    <button id="quit" class="danger">Quit Cortana</button>
+  </div>
+</aside>
+
+<aside id="help" class="settings help-panel" aria-hidden="true" aria-label="How to use">
+  <div class="set-head">
+    <h2>How to use</h2>
+    <button id="closeHelp" class="icon" aria-label="Close guide">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="set-body help-body">
+
+    <section>
+      <h3>Start here</h3>
+      <p><b>1.</b> Pick a model in the top bar. Uncensored / abliterated models are marked and chosen first.</p>
+      <p><b>2.</b> Type a message and press <kbd>Enter</kbd>. <kbd>Shift</kbd> + <kbd>Enter</kbd> adds a new line.</p>
+      <p><b>3.</b> Press <kbd>Esc</kbd> to stop a reply. <b>+</b> starts a fresh chat. Nothing is written to disk.</p>
+    </section>
+
+    <section>
+      <h3>Models</h3>
+      <p>The app scans your llama-swap stack on port 8080 and LM Studio on port 1234. Embedding and reranker models are hidden. Click the refresh arrows to rescan.</p>
+      <p><b>Vision:</b> image attachments need a vision model. Most Qwen models here include a vision projector; <code>flint</code>, <code>qwen-flash</code> and <code>architect</code> are text-only. Text and code files work with every model.</p>
+      <p><b>Model guide:</b> click the bar-chart button in the top bar to see what is loaded now and estimated rankings for questions, reasoning, coding, search/RAG, writing, vision, speed, and long context. Use any row's <b>Use</b> button to switch models.</p>
+    </section>
+
+    <section>
+      <h3>Attachments &amp; screenshots</h3>
+      <ul>
+        <li>Click the <b>paperclip</b> to attach images or text/code files.</li>
+        <li>Paste a screenshot with <kbd>Ctrl</kbd> + <kbd>V</kbd>, or drag files onto the window.</li>
+        <li>Images are resized to 1600 px and sent to vision models. Text files are inserted into the prompt.</li>
+        <li>Limits: 8 attachments per message, 20 MB per image, 2 MB per text file (~28,000 characters, then truncated). PDFs and Office files are not supported yet.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Reasoning &amp; instant replies</h3>
+      <p>Use the <b>Reasoning on/off</b> pill under the composer, or <b>Settings → Reasoning</b>. With llama-swap, Off sends <code>enable_thinking: false</code> so the model skips its reasoning phase and answers immediately. On lets it think first.</p>
+      <p>Models <code>qwen-fast</code> and <code>qwen-4b</code> are already configured as no-thinking variants in llama-swap. The change applies to the next reply.</p>
+    </section>
+
+    <section>
+      <h3>Tokens &amp; speed</h3>
+      <p>The bottom bar shows live approximate tokens and tokens/second while a reply streams, then the exact count when it finishes. Hover a reply's token count to see time to first token.</p>
+    </section>
+
+    <section>
+      <h3>Copy, edit, regenerate</h3>
+      <ul>
+        <li><b>Copy</b> any reply, or copy a fenced code block from its header.</li>
+        <li><b>Edit</b> one of your messages, then <b>Save &amp; resend</b>. Everything after it is replaced and the model answers the edited version.</li>
+        <li><b>Regenerate</b> re-runs the latest answer without changing your message.</li>
+        <li>Message actions appear on hover; on touch screens they are always visible.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Internet killswitch</h3>
+      <p>Click the <b>Online / Blocked</b> pill in the header. Windows asks for administrator permission, then every active network adapter is disabled. Local models keep working because <code>127.0.0.1</code> is never touched.</p>
+      <p>The switch <b>stays on after you quit</b>. Reopen the app and click <b>Blocked</b> to restore internet, or re-enable the adapter in Windows network settings. If you are already offline it tells you there is nothing to block.</p>
+    </section>
+
+    <section>
+      <h3>Online status &amp; your IP</h3>
+      <p>The header pill shows <b>Online</b>, <b>Offline</b>, or <b>Blocked</b>. When the connection returns you get a toast.</p>
+      <p>Click <b>Show IP</b> for your public address plus ISP/org, city and local adapter addresses — useful for confirming a VPN or PeerBlock. The check is <b>manual</b> and contacts an external IP lookup service. If it fails, a blocker or VPN firewall may be in the way. On narrow windows, use <b>Settings → Connection</b>.</p>
+    </section>
+
+    <section>
+      <h3>Settings</h3>
+      <ul>
+        <li><b>System prompt</b> — optional instructions, with a Direct preset.</li>
+        <li><b>Temperature</b> — higher is more creative, lower is more focused.</li>
+        <li><b>Context window</b> — Ollama only; llama-swap sets context in its config.</li>
+        <li><b>Add endpoint</b> — connect any OpenAI-compatible local server.</li>
+        <li><b>Detected sources</b> — shows what is online; Rescan refreshes it.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Privacy</h3>
+      <p>Chat messages and attachments live only in this tab. There is no history, no <code>localStorage</code>, no cookies, and no request log. Closing or reloading the tab erases the conversation. Chat traffic stays on <code>127.0.0.1</code>; the only external request is the manual IP check.</p>
+      <p>The killswitch writes one small state file with adapter names, never conversation data.</p>
+    </section>
+
+    <section>
+      <h3>Keyboard shortcuts</h3>
+      <table class="keys">
+        <tr><td><kbd>Enter</kbd></td><td>Send message</td></tr>
+        <tr><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td><td>New line</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Stop reply / close panel / cancel edit</td></tr>
+        <tr><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td><td>Save an edit</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h3>Troubleshooting</h3>
+      <ul>
+        <li><b>No models found</b> — start the local AI stack (<code>E:\ai\AI Launcher.vbs</code> or <code>start-swap-hidden.ps1</code>), then click Rescan.</li>
+        <li><b>Image request fails</b> — switch to a vision model such as <code>qwen</code>, <code>qwen-9b</code> or <code>qwen-4b</code>.</li>
+        <li><b>IP check fails</b> — VPN killswitch, PeerBlock, firewall, or no internet. Local IPs still appear.</li>
+        <li><b>Killswitch left on</b> — reopen the app and click Blocked, or enable the adapter in Windows.</li>
+        <li><b>LM Studio missing</b> — make sure its server is running and CORS is enabled.</li>
+      </ul>
+    </section>
+
+    <p class="help-foot">Everything runs on this PC. The full guide is also in <code>HOW TO USE.md</code> next to the launcher.</p>
+  </div>
+</aside>
+
+<aside id="guide" class="settings guide-panel" aria-hidden="true" aria-label="Model guide">
+  <div class="set-head">
+    <h2>Model guide</h2>
+    <div class="guide-head-actions">
+      <button id="guideRefresh" class="mini" type="button">Rescan</button>
+      <button id="closeGuide" class="icon" type="button" aria-label="Close model guide">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="set-body guide-body">
+    <section>
+      <div class="label-row"><span>Loaded now</span><span id="guideLoadedCount">checking…</span></div>
+      <div id="guideLoaded" class="guide-loaded"><div class="guide-loaded-empty">Checking llama-swap…</div></div>
+    </section>
+
+    <section>
+      <h3>Best model for the job</h3>
+      <p class="guide-note">Ranked from model family, size, context, and specialization. Estimated guidance, not benchmarked.</p>
+      <div id="guideTabs" class="guide-tabs" role="tablist" aria-label="Rank models by"></div>
+      <p id="guideSortHint" class="guide-sort-hint"></p>
+      <div id="guideList" class="guide-list"></div>
+    </section>
+
+    <section>
+      <h3>Search support models</h3>
+      <div id="guideSupport" class="guide-support"></div>
+      <p class="guide-note">These two power local library search and re-ranking. They are not chat models.</p>
+    </section>
+
+    <p class="guide-disclaimer">Scores run from 0 to 5 and are guidance, not measurements. They are based on each model's family, parameter scale, context window, and intended specialization. Your own prompts and this PC's speed may change the best pick. “Loaded now” is live from llama-swap.</p>
+  </div>
+</aside>
+
+<div id="bye" class="bye hidden">
+  <div>
+    <h2>Session closed</h2>
+    <p>The local server has stopped. You can close this tab.</p>
+  </div>
+</div>
+
+<noscript><p style="padding:24px;color:#e8ebe5">This interface needs JavaScript enabled.</p></noscript>
+
+<script>
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ *  Cortana — a stateless chat UI for local models.
+ *  No storage APIs are used anywhere in this file on purpose.
+ * ------------------------------------------------------------------ */
+
+const $ = (s) => document.querySelector(s);
+const els = {
+  chat: $('#chat'),
+  messages: $('#messages'),
+  empty: $('#empty'),
+  modelChips: $('#modelChips'),
+  emptyHint: $('#emptyHint'),
+  model: $('#modelSelect'),
+  input: $('#input'),
+  send: $('#send'),
+  stop: $('#stop'),
+  status: $('#status'),
+  stats: $('#stats'),
+  netBtn: $('#netBtn'),
+  netText: $('#netText'),
+  ipBtn: $('#ipBtn'),
+  ipText: $('#ipText'),
+  ipDetails: $('#ipDetails'),
+  checkIpBtn: $('#checkIpBtn'),
+  attachBtn: $('#attachBtn'),
+  attachTray: $('#attachTray'),
+  fileInput: $('#fileInput'),
+  dropOverlay: $('#dropOverlay'),
+  toasts: $('#toasts'),
+  refresh: $('#refreshBtn'),
+  settings: $('#settings'),
+  backdrop: $('#backdrop'),
+  settingsBtn: $('#settingsBtn'),
+  closeSettings: $('#closeSettings'),
+  help: $('#help'),
+  helpBtn: $('#helpBtn'),
+  closeHelp: $('#closeHelp'),
+  guide: $('#guide'),
+  guideBtn: $('#guideBtn'),
+  closeGuide: $('#closeGuide'),
+  guideRefresh: $('#guideRefresh'),
+  guideTabs: $('#guideTabs'),
+  guideSortHint: $('#guideSortHint'),
+  guideList: $('#guideList'),
+  guideLoaded: $('#guideLoaded'),
+  guideLoadedCount: $('#guideLoadedCount'),
+  guideSupport: $('#guideSupport'),
+  settingsHelpBtn: $('#settingsHelpBtn'),
+  emptyHelpBtn: $('#emptyHelpBtn'),
+  newBtn: $('#newBtn'),
+  system: $('#systemPrompt'),
+  presetDirect: $('#presetDirect'),
+  clearSystem: $('#clearSystem'),
+  temp: $('#temp'),
+  tempVal: $('#tempVal'),
+  reasoning: $('#reasoning'),
+  reasoningHint: $('#reasoningHint'),
+  thinkBtn: $('#thinkBtn'),
+  thinkText: $('#thinkText'),
+  ctx: $('#ctx'),
+  extra: $('#extraEndpoint'),
+  addEndpoint: $('#addEndpoint'),
+  extraMsg: $('#extraMsg'),
+  rescan: $('#rescan'),
+  providers: $('#providerList'),
+  quit: $('#quit'),
+  bye: $('#bye'),
+};
+
+const KNOWN = [
+  { name: 'Local AI (llama-swap)', kind: 'openai', base: 'http://127.0.0.1:8080', swap: true, fixed: true },
+  { name: 'LM Studio', kind: 'openai', base: 'http://127.0.0.1:1234', fixed: true },
+];
+
+const MODEL_GUIDE = {
+  architect: {
+    full: 'Qwen3.8-Flash-Next IQ3_XXS',
+    tags: ['text-only', '65k ctx', 'RAM-heavy'],
+    note: 'Deepest reasoning and planning. Slow to load and heavy on RAM; text-only.',
+    scores: { questions: 4.6, reasoning: 5.0, coding: 4.0, retrieval: 4.5, writing: 4.3, vision: 0, speed: 1.5, context: 4.5 },
+  },
+  'qwen-flash': {
+    full: 'Qwen3.8-Flash-Next GSQ-RCO IQ3_S',
+    tags: ['text-only', '32k ctx', 'strong all-round'],
+    note: 'Best quality/speed balance for hard questions and analysis; text-only.',
+    scores: { questions: 4.5, reasoning: 4.6, coding: 4.0, retrieval: 4.2, writing: 4.4, vision: 0, speed: 2.5, context: 3.5 },
+  },
+  flint: {
+    full: 'Recursive Flint 40B-A6B Q4_K_M',
+    tags: ['text-only', '32k ctx', '40B MoE'],
+    note: '40B MoE generalist (6B active). Good long-form answers; not a coding specialist.',
+    scores: { questions: 4.2, reasoning: 4.3, coding: 3.6, retrieval: 4.2, writing: 4.0, vision: 0, speed: 3.8, context: 3.5 },
+  },
+  'qwen-27b': {
+    full: 'Qwen3.8 27B Uncensored HauhauCS Q3_K_P',
+    tags: ['vision', '32k ctx', '27B dense'],
+    note: 'Strong reasoning in a dense 27B; vision; slower than the MoE Qwen 3.6.',
+    scores: { questions: 4.0, reasoning: 4.4, coding: 3.5, retrieval: 3.6, writing: 4.0, vision: 4, speed: 2.5, context: 3.5 },
+  },
+  coder: {
+    full: 'Tiel Coder 35B-A3B UD-Q4_K_XL',
+    tags: ['coding', 'vision', '131k ctx'],
+    note: 'Coding specialist with repo-scale context and vision; weaker general chat.',
+    scores: { questions: 3.6, reasoning: 3.7, coding: 5.0, retrieval: 3.5, writing: 3.2, vision: 4, speed: 4, context: 5 },
+  },
+  qwen: {
+    full: 'Qwen3.6 35B-A3B Uncensored HauhauCS IQ4_XS',
+    tags: ['vision', '131k ctx', '35B MoE'],
+    note: 'Best everyday pick: uncensored 35B MoE, vision, long context, good speed.',
+    scores: { questions: 4.0, reasoning: 4.0, coding: 3.6, retrieval: 4.4, writing: 3.9, vision: 4, speed: 4, context: 5 },
+  },
+  'qwen-fast': {
+    full: 'Qwen3.6 35B-A3B Uncensored (no thinking)',
+    tags: ['vision', '131k ctx', 'no thinking'],
+    note: 'Same as qwen but skips thinking: fastest big model for chat and screenshots.',
+    scores: { questions: 3.9, reasoning: 2.5, coding: 3.6, retrieval: 4.2, writing: 3.8, vision: 4, speed: 5, context: 5 },
+  },
+  'qwen-9b': {
+    full: 'Qwen3.5 9B Uncensored HauhauCS Q6_K',
+    tags: ['vision', '65k ctx', 'fast'],
+    note: 'Fast general chat with vision; good when VRAM or RAM is tight.',
+    scores: { questions: 3.4, reasoning: 3.1, coding: 2.5, retrieval: 3.4, writing: 3.3, vision: 3.5, speed: 4.5, context: 4 },
+  },
+  'qwen-4b': {
+    full: 'Qwen3.5 4B Uncensored HauhauCS Q8_0',
+    tags: ['vision', '65k ctx', 'fastest chat'],
+    note: 'Fastest vision chat; simple questions and drafts; weak reasoning and coding.',
+    scores: { questions: 2.5, reasoning: 1.6, coding: 2.0, retrieval: 2.8, writing: 2.4, vision: 3, speed: 5, context: 4 },
+  },
+  'lfm-omni': {
+    full: 'LFM3-Omni 2B',
+    tags: ['vision', 'audio', 'always loaded'],
+    note: 'Instant multimodal helper; small 2B, use for quick lookups, vision and audio.',
+    scores: { questions: 2.0, reasoning: 1.5, coding: 1.5, retrieval: 2.0, writing: 2.0, vision: 3, speed: 5, context: 1.5 },
+  },
+  'lfm-audio': {
+    full: 'LFM3-Audio 2B',
+    tags: ['audio', '8k ctx', 'specialist'],
+    note: 'Audio-focused 2B; use for voice and audio inputs, not text-heavy work.',
+    scores: { questions: 1.5, reasoning: 1.0, coding: 1.0, retrieval: 1.5, writing: 1.5, vision: 0, speed: 5, context: 1.5 },
+  },
+};
+
+const SUPPORT_GUIDE = {
+  embed: {
+    name: 'bge-m3 embeddings',
+    note: 'Turns documents and queries into vectors for local library search. 8k context.',
+  },
+  rerank: {
+    name: 'bge-reranker-v2-m3',
+    note: 'Re-orders retrieved passages so the best evidence reaches the chat model. 8k context.',
+  },
+};
+
+const GUIDE_CATEGORIES = [
+  { key: 'overall', label: 'Overall', hint: 'Weighted intelligence mix: Questions 25%, Reasoning 30%, Coding 20%, Search/RAG 15%, Writing 10%.' },
+  { key: 'questions', label: 'Questions', hint: 'General knowledge, explanations, and everyday chat.' },
+  { key: 'reasoning', label: 'Reasoning', hint: 'Multi-step logic, planning, math, and hard decisions.' },
+  { key: 'coding', label: 'Coding', hint: 'Code generation, debugging, review, and repo-scale context.' },
+  { key: 'retrieval', label: 'Search & RAG', hint: 'Answering from local library results and long documents.' },
+  { key: 'writing', label: 'Writing', hint: 'Drafting, rewriting, and summarizing.' },
+  { key: 'vision', label: 'Vision', hint: 'Screenshots and images. Text-only models are marked with a dash.' },
+  { key: 'speed', label: 'Speed', hint: 'Responsiveness and load time; not an intelligence score.' },
+  { key: 'context', label: 'Long context', hint: 'How much conversation or source material fits in one request.' },
+];
+
+const state = {
+  endpoints: KNOWN.map((e) => ({ ...e })),
+  models: [],
+  current: null,
+  sources: [],
+  messages: [],
+  sending: false,
+  ctrl: null,
+  timer: null,
+  started: 0,
+  killActive: false,
+  netBusy: false,
+  ipInfo: null,
+  ipBusy: false,
+  pending: [],
+  editing: false,
+  cancelEdit: null,
+  dragDepth: 0,
+  running: [],
+  guideCategory: 'overall',
+  settings: { temp: 0.8, ctx: 8192, system: '', reasoning: true },
+};
+
+const UNFILTERED = /(uncensored|abliterated|dolphin|hermes|wizard|nsfw|unfiltered|liberty)/i;
+const NON_CHAT = /(^|[-_.\/])(embed|embedding|rerank|reranker)([-_.\/]|$)/i;
+
+/* ---------------------------- helpers ----------------------------- */
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function formatSize(bytes) {
+  if (!bytes) return '';
+  const gb = bytes / 1073741824;
+  return gb >= 1 ? gb.toFixed(1) + ' GB' : Math.round(bytes / 1048576) + ' MB';
+}
+
+async function getJSON(url, ms = 1600) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function errorText(res) {
+  let text = '';
+  try { text = await res.text(); } catch (_) {}
+  try {
+    const j = JSON.parse(text);
+    if (j && j.error) return typeof j.error === 'string' ? j.error : (j.error.message || text.slice(0, 300));
+  } catch (_) {}
+  return text.slice(0, 300) || 'HTTP ' + res.status;
+}
+
+function nearBottom() {
+  const c = els.chat;
+  return c.scrollHeight - c.scrollTop - c.clientHeight < 100;
+}
+
+function scrollBottom() {
+  els.chat.scrollTop = els.chat.scrollHeight;
+}
+
+function autosize() {
+  els.input.style.height = 'auto';
+  els.input.style.height = Math.min(els.input.scrollHeight, 200) + 'px';
+}
+
+function setStatus(text, kind) {
+  els.status.innerHTML = '<i class="dot ' + (kind || '') + '"></i>' + escapeHtml(text);
+}
+
+/* -------------------------- connectivity -------------------------- */
+
+let lastToast = { text: '', at: 0 };
+
+function toast(message, isError) {
+  if (!message) return;
+  const now = Date.now();
+  if (message === lastToast.text && now - lastToast.at < 3500) return;
+  lastToast = { text: message, at: now };
+
+  const node = document.createElement('div');
+  node.className = 'toast' + (isError ? ' err' : '');
+  node.textContent = message;
+  els.toasts.append(node);
+  requestAnimationFrame(() => node.classList.add('show'));
+  setTimeout(() => {
+    node.classList.remove('show');
+    setTimeout(() => node.remove(), 250);
+  }, 4500);
+}
+
+function renderNet() {
+  const btn = els.netBtn;
+  btn.classList.remove('online', 'offline', 'blocked', 'busy');
+  const dot = btn.querySelector('.dot');
+  dot.className = 'dot';
+
+  if (state.netBusy) {
+    btn.classList.add('busy');
+    els.netText.textContent = '…';
+    btn.title = 'Waiting for administrator permission…';
+    btn.setAttribute('aria-busy', 'true');
+    return;
+  }
+  btn.removeAttribute('aria-busy');
+
+  if (state.killActive) {
+    btn.classList.add('blocked');
+    dot.classList.add('ok');
+    els.netText.textContent = 'Blocked';
+    btn.title = 'Internet is blocked. Click to restore it.';
+    btn.setAttribute('aria-pressed', 'true');
+  } else if (navigator.onLine) {
+    btn.classList.add('online');
+    dot.classList.add('ok');
+    els.netText.textContent = 'Online';
+    btn.title = 'Internet is online. Click to block all internet.';
+    btn.setAttribute('aria-pressed', 'false');
+  } else {
+    btn.classList.add('offline');
+    els.netText.textContent = 'Offline';
+    btn.title = 'No internet connection.';
+    btn.setAttribute('aria-pressed', 'false');
+  }
+}
+
+async function refreshNet() {
+  if (state.netBusy) { renderNet(); return; }
+  try {
+    const res = await fetch('/killswitch', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      state.killActive = !!data.active;
+      if (state.killActive && state.ipInfo) {
+        state.ipInfo = null;
+        renderIp();
+        updateIpDetails();
+      }
+    }
+  } catch (_) {}
+  renderNet();
+}
+
+async function toggleKillswitch() {
+  if (state.netBusy) return;
+  const turningOn = !state.killActive;
+
+  if (turningOn) {
+    const ok = confirm(
+      'Block all internet access?\n\n' +
+      'Wi-Fi and Ethernet will be turned off until you click this button again to restore them. ' +
+      'Your local models keep working.\n\n' +
+      'Windows will now ask for administrator permission.'
+    );
+    if (!ok) return;
+  }
+
+  state.netBusy = true;
+  renderNet();
+
+  try {
+    const res = await fetch('/killswitch?on=' + (turningOn ? '1' : '0'), {
+      method: 'POST',
+      headers: { 'X-Cortana': '1' },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || 'The killswitch could not be changed.');
+
+    state.killActive = !!data.active;
+    if (state.killActive) clearIp();
+    toast(state.killActive ? 'Internet blocked. Local chat is unaffected.' : 'Killswitch off — reconnecting…');
+  } catch (err) {
+    toast((err && err.message) || 'Killswitch error.', true);
+  } finally {
+    state.netBusy = false;
+    await refreshNet();
+  }
+}
+
+/* -------------------------- public IP ----------------------------- */
+
+function clearIp() {
+  state.ipInfo = null;
+  state.ipBusy = false;
+  renderIp();
+  updateIpDetails();
+}
+
+function renderIp() {
+  const btn = els.ipBtn;
+  if (!btn) return;
+  btn.classList.toggle('busy', state.ipBusy);
+  btn.classList.toggle('set', !!state.ipInfo);
+  if (state.ipBusy) {
+    els.ipText.textContent = '…';
+    btn.title = 'Checking your public IP…';
+    return;
+  }
+  if (state.ipInfo) {
+    els.ipText.textContent = state.ipInfo.ip;
+    const bits = [state.ipInfo.org || state.ipInfo.isp, state.ipInfo.city, state.ipInfo.country].filter(Boolean);
+    btn.title = 'Public IP ' + state.ipInfo.ip + (bits.length ? ' · ' + bits.join(' · ') : '') + ' — click to refresh';
+  } else {
+    els.ipText.textContent = 'Show IP';
+    btn.title = 'Check your public IP (contacts an IP lookup service)';
+  }
+}
+
+function updateIpDetails() {
+  if (!els.ipDetails) return;
+  const info = state.ipInfo;
+  const parts = [];
+  if (state.ipBusy) {
+    parts.push('Checking your public IP…');
+  } else if (info && info.ip) {
+    const line1 = ['Public  ' + info.ip, info.org || info.isp, [info.city, info.country].filter(Boolean).join(', ')]
+      .filter(Boolean).join('  ·  ');
+    parts.push(line1);
+  } else {
+    parts.push('Public IP not checked. Checking contacts an external lookup service.');
+  }
+
+  const locals = (info && info.local) || [];
+  if (locals.length) {
+    parts.push('Local   ' + locals.map((l) => l.ip + ' (' + l.name + ')').join('\n        '));
+  }
+  els.ipDetails.textContent = parts.join('\n');
+}
+
+async function checkIp() {
+  if (state.ipBusy) return;
+  if (state.killActive) { toast('The killswitch is on — internet is blocked.', true); return; }
+  if (!navigator.onLine) { toast('You are offline. No public IP to look up.', true); return; }
+
+  state.ipBusy = true;
+  renderIp();
+  updateIpDetails();
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 18000);
+  try {
+    const res = await fetch('/myip', {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { 'X-Cortana': '1' },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok) throw new Error(data.error || 'Lookup failed.');
+
+    state.ipInfo = data;
+    const bits = [data.org || data.isp, data.city, data.country].filter(Boolean);
+    toast('Public IP ' + data.ip + (bits.length ? ' · ' + bits.join(' · ') : ''));
+  } catch (err) {
+    state.ipInfo = null;
+    const msg = err && err.name === 'AbortError'
+      ? 'IP check timed out. PeerBlock, a VPN firewall, or no internet may be blocking it.'
+      : 'Could not check your public IP. A blocker, VPN, or no internet may be in the way.';
+    toast(msg, true);
+  } finally {
+    clearTimeout(timer);
+    state.ipBusy = false;
+    renderIp();
+    updateIpDetails();
+    refreshNet();
+  }
+}
+
+/* --------------------------- markdown ----------------------------- */
+
+function inlineMd(s) {
+  return s
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^\w*])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function codeBlock(block) {
+  const lang = block.lang ? escapeHtml(block.lang) : '';
+  return '<div class="code"><div class="code-head"><span>' + lang + '</span>' +
+    '<button class="copy" type="button">copy</button></div><pre><code>' +
+    escapeHtml(block.code.replace(/\n$/, '')) + '</code></pre></div>';
+}
+
+function md(src) {
+  const blocks = [];
+  src = String(src).replace(/```([a-zA-Z0-9_+-]*)[ \t]*\n?([\s\S]*?)(?:```|$)/g, (m, lang, code) => {
+    blocks.push({ lang: lang, code: code });
+    return '\n\u0000B' + (blocks.length - 1) + '\u0000\n';
+  });
+
+  const lines = escapeHtml(src).split('\n');
+  let out = '';
+  let para = [];
+  let list = null;
+
+  const closeList = () => {
+    if (list) { out += '</' + list + '>'; list = null; }
+  };
+  const flushPara = () => {
+    if (para.length) { out += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; }
+  };
+
+  for (let i = 0; i < lines.length;) {
+    const line = lines[i];
+
+    if (/^\s*$/.test(line)) { flushPara(); closeList(); i++; continue; }
+
+    const fence = line.match(/^\u0000B(\d+)\u0000$/);
+    if (fence) {
+      flushPara(); closeList();
+      out += codeBlock(blocks[Number(fence[1])]);
+      i++; continue;
+    }
+
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) {
+      flushPara(); closeList();
+      const n = h[1].length;
+      out += '<h' + n + '>' + inlineMd(h[2]) + '</h' + n + '>';
+      i++; continue;
+    }
+
+    if (/^\s*(?:---+|\*\*\*+)\s*$/.test(line)) { flushPara(); closeList(); out += '<hr>'; i++; continue; }
+
+    if (/^&gt;\s?/.test(line)) {
+      flushPara(); closeList();
+      const quoted = [];
+      while (i < lines.length && /^&gt;\s?/.test(lines[i])) {
+        quoted.push(inlineMd(lines[i].replace(/^&gt;\s?/, '')));
+        i++;
+      }
+      out += '<blockquote>' + quoted.join('<br>') + '</blockquote>';
+      continue;
+    }
+
+    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ul || ol) {
+      flushPara();
+      const type = ul ? 'ul' : 'ol';
+      if (list !== type) { closeList(); out += '<' + type + '>'; list = type; }
+      out += '<li>' + inlineMd((ul || ol)[1]) + '</li>';
+      i++; continue;
+    }
+
+    closeList();
+    para.push(line);
+    i++;
+  }
+
+  flushPara();
+  closeList();
+  return out;
+}
+
+/* -------------------------- discovery ----------------------------- */
+
+async function probe(ep) {
+  if (ep.kind === 'ollama') {
+    const data = await getJSON(ep.base + '/api/tags');
+    return (data.models || []).map((m) => ({
+      provider: ep.name,
+      kind: 'ollama',
+      base: ep.base,
+      id: m.name || m.model,
+      size: m.size || 0,
+      uncensored: UNFILTERED.test(m.name || ''),
+    }));
+  }
+  const data = await getJSON(ep.base + '/v1/models');
+  return (data.data || [])
+    .filter((m) => !NON_CHAT.test(m.id || ''))
+    .map((m) => ({
+      provider: ep.name,
+      kind: 'openai',
+      base: ep.base,
+      swap: !!ep.swap,
+      id: m.id,
+      name: m.name || m.id,
+      loaded: !!(m.status && m.status.value === 'loaded'),
+      size: 0,
+      uncensored: UNFILTERED.test((m.id || '') + ' ' + (m.name || '')),
+    }));
+}
+
+async function discover() {
+  setStatus('Scanning local models…', 'wait');
+  els.refresh.classList.add('spin');
+
+  const settled = await Promise.allSettled(state.endpoints.map((ep) => probe(ep)));
+  const sources = [];
+  let models = [];
+
+  settled.forEach((result, i) => {
+    const ep = state.endpoints[i];
+    if (result.status === 'fulfilled' && result.value.length) {
+      sources.push({ name: ep.name, base: ep.base, kind: ep.kind, fixed: !!ep.fixed, count: result.value.length, ok: true });
+      models.push(...result.value);
+    } else {
+      sources.push({ name: ep.name, base: ep.base, kind: ep.kind, fixed: !!ep.fixed, count: 0, ok: false });
+    }
+  });
+
+  const seen = new Set();
+  models = models.filter((m) => {
+    m.key = m.kind + '|' + m.base + '|' + m.id;
+    if (seen.has(m.key)) return false;
+    seen.add(m.key);
+    return true;
+  });
+  const providerOrder = new Map(state.endpoints.map((e, i) => [e.name, i]));
+  models.sort((a, b) =>
+    (b.uncensored - a.uncensored) ||
+    ((providerOrder.get(a.provider) ?? 99) - (providerOrder.get(b.provider) ?? 99)) ||
+    a.id.localeCompare(b.id));
+
+  const previous = state.current ? state.current.key : null;
+  state.sources = sources;
+  state.models = models;
+  state.current = models.find((m) => m.key === previous) || preferredModel(models) || null;
+
+  renderModelSelect();
+  renderChips();
+  renderProviders();
+  updateStatus();
+  updateReasoningUi();
+  if (state.current) ensureCapabilities(state.current).then(() => updateReasoningUi());
+  els.refresh.classList.remove('spin');
+  if (els.guide.classList.contains('open')) refreshGuide();
+
+  if (!models.length) {
+    els.emptyHint.innerHTML = 'No local models found. Start your AI stack:<br>' +
+      '<code>E:\\ai\\AI Launcher.vbs</code> or <code>E:\\ai\\_system\\scripts\\start-swap-hidden.ps1</code>';
+  } else {
+    els.emptyHint.textContent = '';
+  }
+}
+
+function preferredModel(models) {
+  return models.find((m) => m.uncensored) || models[0] || null;
+}
+
+function updateStatus() {
+  if (state.models.length) {
+    setStatus(state.models.length + ' model' + (state.models.length === 1 ? '' : 's') + ' ready', 'ok');
+  } else {
+    setStatus('No models found', 'err');
+  }
+}
+
+function renderModelSelect() {
+  els.model.innerHTML = '';
+  if (!state.models.length) {
+    const opt = new Option('No models found', '');
+    opt.disabled = true;
+    opt.selected = true;
+    els.model.add(opt);
+    updateSendState();
+    return;
+  }
+
+  const groups = new Map();
+  for (const m of state.models) {
+    if (!groups.has(m.base)) groups.set(m.base, { name: m.provider, items: [] });
+    groups.get(m.base).items.push(m);
+  }
+  for (const group of groups.values()) {
+    const og = document.createElement('optgroup');
+    og.label = group.name;
+    for (const m of group.items) {
+      const size = formatSize(m.size);
+      const title = m.name && m.name !== m.id ? m.name + '  (' + m.id + ')' : m.id;
+      const label = title + (size ? '  ·  ' + size : '') + (m.uncensored ? '  ·  uncensored' : '');
+      og.append(new Option(label, m.key));
+    }
+    els.model.add(og);
+  }
+  if (state.current) els.model.value = state.current.key;
+  updateSendState();
+}
+
+function renderChips() {
+  els.modelChips.innerHTML = '';
+  for (const m of state.models.slice(0, 8)) {
+    const b = document.createElement('button');
+    b.className = 'chip' + (state.current && state.current.key === m.key ? ' active' : '');
+    b.type = 'button';
+    b.innerHTML = (m.uncensored ? '<span class="dot"></span>' : '') +
+      escapeHtml(m.id) + (m.uncensored ? ' <span class="unc">uncensored</span>' : '');
+    b.title = m.provider + ' · ' + m.id;
+    b.addEventListener('click', () => selectModel(m.key, true));
+    els.modelChips.append(b);
+  }
+}
+
+function renderProviders() {
+  els.providers.innerHTML = '';
+  for (const s of state.sources) {
+    const li = document.createElement('li');
+    const dot = document.createElement('i');
+    dot.className = 'dot ' + (s.ok ? 'ok' : '');
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = s.name;
+    const meta = document.createElement('span');
+    meta.className = 'count';
+    meta.textContent = s.ok ? s.count + ' model' + (s.count === 1 ? '' : 's') : 'offline';
+    li.append(dot, name, meta);
+    if (!s.fixed) {
+      const x = document.createElement('button');
+      x.className = 'x';
+      x.textContent = 'remove';
+      x.title = 'Remove endpoint';
+      x.addEventListener('click', () => {
+        state.endpoints = state.endpoints.filter((e) => e.base !== s.base);
+        discover();
+      });
+      li.append(x);
+    }
+    els.providers.append(li);
+  }
+}
+
+function selectModel(key, focus) {
+  const m = state.models.find((x) => x.key === key);
+  if (!m) return;
+  state.current = m;
+  els.model.value = key;
+  renderChips();
+  updateReasoningUi();
+  ensureCapabilities(m).then(() => updateReasoningUi());
+  if (els.guide.classList.contains('open')) renderGuide();
+  if (focus) els.input.focus();
+}
+
+/* ------------------------ model capabilities ---------------------- */
+
+async function ensureCapabilities(model) {
+  if (!model || model.kind !== 'ollama') return model;
+  if (model._capsLoaded) return model;
+  if (model._capsPromise) return model._capsPromise;
+
+  model._capsPromise = (async () => {
+    try {
+      const res = await fetch(model.base + '/api/show', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: model.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.capabilities)) {
+          model.capabilities = data.capabilities;
+          model.thinking = data.capabilities.includes('thinking');
+          model.vision = data.capabilities.includes('vision');
+        }
+      }
+    } catch (_) {}
+    model._capsLoaded = true;
+    model._capsPromise = null;
+    return model;
+  })();
+
+  return model._capsPromise;
+}
+
+function updateReasoningUi() {
+  const model = state.current;
+  const swap = !!(model && model.swap);
+  const supported = !!(model && ((model.kind === 'ollama' && model.thinking === true) || swap));
+  let known = true;
+  let hint = 'Reasoning applies to Ollama thinking models and llama-swap.';
+
+  if (!model) {
+    hint = 'Select a model to see whether it supports reasoning.';
+  } else if (swap) {
+    hint = 'On: the model thinks before replying. Off: skip reasoning for instant replies.';
+  } else if (model.kind !== 'ollama') {
+    hint = 'The reasoning switch applies to Ollama and llama-swap models only.';
+  } else if (model.thinking === true) {
+    hint = 'On: the model thinks before replying. Off: skip reasoning for instant replies.';
+  } else if (model.thinking === false) {
+    hint = 'This model has no separate reasoning mode — it is already direct.';
+  } else if (!model._capsLoaded) {
+    known = false;
+    hint = 'Checking this model’s capabilities…';
+  } else {
+    hint = 'This model did not report a reasoning mode.';
+  }
+
+  els.reasoning.checked = !!state.settings.reasoning;
+  els.reasoning.disabled = !supported;
+
+  els.thinkBtn.disabled = !supported;
+  els.thinkBtn.classList.toggle('off', supported && !state.settings.reasoning);
+  els.thinkText.textContent = !supported
+    ? (known ? 'Reasoning n/a' : 'Reasoning…')
+    : (state.settings.reasoning ? 'Reasoning on' : 'Reasoning off');
+  els.thinkBtn.title = supported
+    ? (state.settings.reasoning ? 'Reasoning is on — click for instant replies' : 'Reasoning is off — instant replies. Click to re-enable.')
+    : hint;
+  els.reasoningHint.textContent = hint;
+}
+
+function setReasoning(on, announce) {
+  state.settings.reasoning = !!on;
+  updateReasoningUi();
+  if (announce) {
+    toast(on ? 'Reasoning on — the model may think before replying.' : 'Reasoning off — replies will be instant.');
+  }
+}
+
+/* --------------------------- model guide -------------------------- */
+
+function guideOverall(scores) {
+  return scores.questions * 0.25 + scores.reasoning * 0.30 +
+    scores.coding * 0.20 + scores.retrieval * 0.15 + scores.writing * 0.10;
+}
+
+function guideScore(entry, category) {
+  if (!entry) return null;
+  return category === 'overall' ? guideOverall(entry.scores) : (entry.scores[category] || 0);
+}
+
+function guideName(id, fallback) {
+  const entry = MODEL_GUIDE[id];
+  if (entry) return entry.full;
+  const support = SUPPORT_GUIDE[id];
+  if (support) return support.name;
+  return fallback || id;
+}
+
+function guideLoadedMap() {
+  const map = new Map();
+  for (const item of state.running) {
+    map.set(item.model, { state: item.state || 'loaded', name: item.name || '' });
+  }
+  for (const model of state.models) {
+    if (model.loaded && !map.has(model.id)) map.set(model.id, { state: 'loaded', name: model.name || '' });
+  }
+  return map;
+}
+
+async function refreshGuide() {
+  const swap = state.endpoints.find((e) => e.swap);
+  let running = [];
+  if (swap) {
+    try {
+      const data = await getJSON(swap.base + '/running', 2500);
+      if (Array.isArray(data.running)) running = data.running;
+    } catch (_) {}
+  }
+  state.running = running;
+  if (els.guide.classList.contains('open')) renderGuide();
+}
+
+async function rescanGuide() {
+  els.guideRefresh.disabled = true;
+  els.guideRefresh.textContent = 'Scanning…';
+  try {
+    await discover();
+  } finally {
+    await refreshGuide();
+    els.guideRefresh.disabled = false;
+    els.guideRefresh.textContent = 'Rescan';
+  }
+}
+
+function renderGuide() {
+  renderGuideTabs();
+  renderGuideLoaded();
+  renderGuideList();
+  renderGuideSupport();
+}
+
+function renderGuideTabs() {
+  els.guideTabs.innerHTML = '';
+  let hint = '';
+  for (const cat of GUIDE_CATEGORIES) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'guide-tab' + (state.guideCategory === cat.key ? ' active' : '');
+    button.textContent = cat.label;
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-selected', state.guideCategory === cat.key ? 'true' : 'false');
+    button.addEventListener('click', () => {
+      state.guideCategory = cat.key;
+      renderGuide();
+    });
+    els.guideTabs.append(button);
+    if (state.guideCategory === cat.key) hint = cat.hint;
+  }
+  els.guideSortHint.textContent = hint;
+}
+
+function renderGuideLoaded() {
+  const loaded = guideLoadedMap();
+  els.guideLoaded.innerHTML = '';
+  els.guideLoadedCount.textContent = loaded.size + ' loaded';
+
+  if (!loaded.size) {
+    const empty = document.createElement('div');
+    empty.className = 'guide-loaded-empty';
+    empty.textContent = 'No models loaded right now. llama-swap loads one on your next chat.';
+    els.guideLoaded.append(empty);
+    return;
+  }
+
+  for (const [id, info] of loaded) {
+    const card = document.createElement('div');
+    card.className = 'guide-load-card';
+    card.title = guideName(id, info.name) + ' — ' + info.state;
+    const dot = document.createElement('i');
+    dot.className = 'dot';
+    const alias = document.createElement('b');
+    alias.textContent = id;
+    const fullName = guideName(id, info.name);
+    if (fullName && fullName !== id) {
+      const modelName = document.createElement('span');
+      modelName.className = 'model';
+      modelName.textContent = fullName;
+      card.append(dot, alias, modelName);
+    } else {
+      card.append(dot, alias);
+    }
+    const status = document.createElement('span');
+    status.className = 'state';
+    status.textContent = info.state;
+    card.append(status);
+    els.guideLoaded.append(card);
+  }
+}
+
+function guideRow(model, entry, score, rank, loaded) {
+  const row = document.createElement('div');
+  row.className = 'guide-row' + (state.current && state.current.key === model.key ? ' current' : '');
+
+  const rankEl = document.createElement('div');
+  rankEl.className = 'guide-rank';
+  rankEl.textContent = score === null || score <= 0 ? '—' : String(rank);
+
+  const main = document.createElement('div');
+  main.className = 'guide-main';
+
+  const title = document.createElement('div');
+  title.className = 'guide-title';
+  const alias = document.createElement('span');
+  alias.className = 'guide-alias';
+  alias.textContent = model.id;
+  const full = document.createElement('span');
+  full.className = 'guide-full';
+  full.textContent = entry ? entry.full : guideName(model.id, model.name);
+  full.title = full.textContent;
+  title.append(alias, full);
+  main.append(title);
+
+  const tags = document.createElement('div');
+  tags.className = 'guide-tags';
+  if (loaded) {
+    const tag = document.createElement('span');
+    tag.className = 'guide-tag loaded';
+    tag.textContent = 'loaded';
+    tags.append(tag);
+  }
+  for (const text of (entry ? entry.tags : [])) {
+    const tag = document.createElement('span');
+    tag.className = 'guide-tag' + (text === 'vision' ? ' vision' : text === 'audio' ? ' audio' : '');
+    tag.textContent = text;
+    tags.append(tag);
+  }
+  if (!entry) {
+    const tag = document.createElement('span');
+    tag.className = 'guide-tag';
+    tag.textContent = 'unrated';
+    tags.append(tag);
+  }
+  main.append(tags);
+
+  const note = document.createElement('p');
+  note.className = 'guide-note-row';
+  note.textContent = entry
+    ? entry.note
+    : 'No capability profile yet. Use it and judge from your own results.';
+  main.append(note);
+
+  const scoreWrap = document.createElement('div');
+  scoreWrap.className = 'guide-score' + (score === null || score <= 0 ? ' na' : '');
+  const bar = document.createElement('div');
+  bar.className = 'guide-bar';
+  const fill = document.createElement('i');
+  fill.style.width = score !== null && score > 0 ? Math.round(Math.min(score, 5) / 5 * 100) + '%' : '0%';
+  bar.append(fill);
+  const number = document.createElement('b');
+  number.textContent = score === null || score <= 0 ? '—' : score.toFixed(1);
+  scoreWrap.append(bar, number);
+
+  const use = document.createElement('button');
+  use.type = 'button';
+  use.className = 'guide-use';
+  const selected = state.current && state.current.key === model.key;
+  use.disabled = !!selected;
+  use.textContent = selected ? 'Using' : 'Use';
+  use.addEventListener('click', () => {
+    selectModel(model.key, false);
+    closePanels();
+    toast('Using ' + model.id + (entry ? ' — ' + entry.full : ''));
+    els.input.focus();
+  });
+
+  row.append(rankEl, main, scoreWrap, use);
+  return row;
+}
+
+function renderGuideList() {
+  const category = state.guideCategory;
+  const loaded = guideLoadedMap();
+  els.guideList.innerHTML = '';
+
+  if (!state.models.length) {
+    const empty = document.createElement('div');
+    empty.className = 'guide-loaded-empty';
+    empty.textContent = 'No models discovered. Start the local AI stack, then press Rescan.';
+    els.guideList.append(empty);
+    return;
+  }
+
+  const rated = [];
+  const unrated = [];
+  for (const model of state.models) {
+    const entry = MODEL_GUIDE[model.id];
+    if (entry) rated.push({ model, entry, score: guideScore(entry, category) });
+    else unrated.push(model);
+  }
+
+  rated.sort((a, b) =>
+    (b.score - a.score) ||
+    (guideOverall(b.entry.scores) - guideOverall(a.entry.scores)) ||
+    a.model.id.localeCompare(b.model.id));
+
+  let rank = 0;
+  for (const item of rated) {
+    if (item.score > 0) rank += 1;
+    els.guideList.append(guideRow(item.model, item.entry, item.score, rank, loaded.has(item.model.id)));
+  }
+
+  if (unrated.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'guide-unrated';
+    const heading = document.createElement('p');
+    heading.className = 'guide-unrated-title';
+    heading.textContent = 'Unrated models';
+    wrap.append(heading);
+    for (const model of unrated) {
+      wrap.append(guideRow(model, null, null, 0, loaded.has(model.id)));
+    }
+    els.guideList.append(wrap);
+  }
+}
+
+function renderGuideSupport() {
+  const loaded = guideLoadedMap();
+  els.guideSupport.innerHTML = '';
+  for (const [id, support] of Object.entries(SUPPORT_GUIDE)) {
+    const row = document.createElement('div');
+    row.className = 'guide-support-row';
+    const dot = document.createElement('i');
+    dot.className = 'dot' + (loaded.has(id) ? ' on' : '');
+    const text = document.createElement('div');
+    const name = document.createElement('b');
+    name.textContent = id + ' · ' + support.name;
+    const note = document.createElement('span');
+    note.textContent = support.note + (loaded.has(id) ? ' Loaded now.' : '');
+    text.append(name, note);
+    row.append(dot, text);
+    els.guideSupport.append(row);
+  }
+}
+
+function openGuide() {
+  els.settings.classList.remove('open');
+  els.settings.setAttribute('aria-hidden', 'true');
+  els.help.classList.remove('open');
+  els.help.setAttribute('aria-hidden', 'true');
+  els.guide.classList.add('open');
+  els.guide.setAttribute('aria-hidden', 'false');
+  els.backdrop.classList.add('show');
+  renderGuide();
+  const body = els.guide.querySelector('.set-body');
+  if (body) body.scrollTop = 0;
+  refreshGuide();
+  els.closeGuide.focus();
+}
+
+function closeGuide() {
+  els.guide.classList.remove('open');
+  els.guide.setAttribute('aria-hidden', 'true');
+  if (!els.settings.classList.contains('open') && !els.help.classList.contains('open')) {
+    els.backdrop.classList.remove('show');
+  }
+}
+
+/* --------------------------- attachments -------------------------- */
+
+const MAX_ATTACHMENTS = 8;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_TEXT_BYTES = 2 * 1024 * 1024;
+const MAX_TEXT_CHARS = 28000;
+const TEXT_EXT = /\.(txt|md|markdown|json|jsonl|csv|tsv|log|xml|ya?ml|toml|ini|cfg|conf|js|mjs|cjs|ts|tsx|jsx|py|rb|php|java|kt|go|rs|c|h|cpp|hpp|cc|cs|swift|sh|bash|zsh|ps1|bat|cmd|sql|html?|css|scss|sass|less|vue|svelte|r|lua|pl|tex)$/i;
+
+function isImageFile(file) {
+  return file.type.startsWith('image/') && file.type !== 'image/svg+xml';
+}
+
+function isTextFile(file) {
+  if (file.type.startsWith('text/')) return true;
+  if (file.type === 'image/svg+xml') return true;
+  if (/^(application\/(json|xml|x-yaml|x-sh|x-httpd-php|javascript))$/.test(file.type)) return true;
+  return TEXT_EXT.test(file.name);
+}
+
+function stripDataUrl(url) {
+  const comma = url.indexOf(',');
+  return comma >= 0 ? url.slice(comma + 1) : url;
+}
+
+function humanSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function loadImageEl(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function imageAttachment(file) {
+  if (file.size > MAX_IMAGE_BYTES) throw new Error(file.name + ' is too large (max 20 MB).');
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImageEl(url);
+    const MAX = 1600;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+    const scale = Math.min(1, MAX / Math.max(w, h));
+    w = Math.max(1, Math.round(w * scale));
+    h = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const keepPng = file.type === 'image/png' && file.size < 2 * 1024 * 1024;
+    if (!keepPng) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+    ctx.drawImage(img, 0, 0, w, h);
+
+    let dataUrl = canvas.toDataURL(keepPng ? 'image/png' : 'image/jpeg', 0.9);
+    if (dataUrl.length > 5 * 1024 * 1024) dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    return { kind: 'image', name: file.name || 'pasted-image.png', dataUrl, bytes: file.size };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function textAttachment(file) {
+  if (file.size > MAX_TEXT_BYTES) throw new Error(file.name + ' is too large (max 2 MB of text).');
+  let text = await file.text();
+  if (text.indexOf('\u0000') !== -1) throw new Error(file.name + ' is not a text file.');
+  let truncated = false;
+  if (text.length > MAX_TEXT_CHARS) {
+    text = text.slice(0, MAX_TEXT_CHARS);
+    truncated = true;
+  }
+  return { kind: 'text', name: file.name, text, truncated, bytes: file.size };
+}
+
+async function addFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+
+  for (const file of files) {
+    if (state.pending.length >= MAX_ATTACHMENTS) {
+      toast('Up to ' + MAX_ATTACHMENTS + ' attachments per message.', true);
+      break;
+    }
+    try {
+      if (isImageFile(file)) {
+        state.pending.push(await imageAttachment(file));
+        warnVision();
+      } else if (isTextFile(file)) {
+        const item = await textAttachment(file);
+        state.pending.push(item);
+        if (item.truncated) {
+          toast(file.name + ' was truncated to ' + MAX_TEXT_CHARS.toLocaleString() + ' characters.');
+        }
+      } else if (/pdf$/i.test(file.name) || file.type === 'application/pdf') {
+        toast('PDFs are not supported yet. Attach a screenshot or a text file.', true);
+      } else {
+        toast(file.name + ': attach images or text/code files.', true);
+      }
+    } catch (err) {
+      toast((err && err.message) || 'Could not attach that file.', true);
+    }
+  }
+
+  renderPending();
+  updateSendState();
+}
+
+function renderPending() {
+  els.attachTray.innerHTML = '';
+  if (!state.pending.length) {
+    els.attachTray.classList.add('hidden');
+    return;
+  }
+  els.attachTray.classList.remove('hidden');
+
+  state.pending.forEach((item, index) => {
+    const box = document.createElement('div');
+    box.className = 'att ' + item.kind;
+
+    if (item.kind === 'image') {
+      const img = document.createElement('img');
+      img.src = item.dataUrl;
+      img.alt = item.name;
+      box.append(img);
+      box.title = item.name;
+    } else {
+      box.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+      const name = document.createElement('span');
+      name.textContent = item.name;
+      box.append(name);
+      box.title = item.name + ' · ' + humanSize(item.bytes) + (item.truncated ? ' (truncated)' : '');
+    }
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'att-x';
+    remove.textContent = '×';
+    remove.title = 'Remove attachment';
+    remove.addEventListener('click', () => {
+      state.pending.splice(index, 1);
+      renderPending();
+      updateSendState();
+    });
+    box.append(remove);
+    els.attachTray.append(box);
+  });
+}
+
+function renderMessageAttachments(box, msg) {
+  if (!box) return;
+  box.innerHTML = '';
+  const images = msg.images || [];
+  const files = msg.files || [];
+  if (!images.length && !files.length) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  for (const src of images) {
+    const thumb = document.createElement('div');
+    thumb.className = 'att-thumb';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = 'Attached image';
+    thumb.append(img);
+    box.append(thumb);
+  }
+
+  for (const file of files) {
+    const chip = document.createElement('div');
+    chip.className = 'att-file';
+    chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+    const name = document.createElement('span');
+    name.textContent = file.name;
+    chip.append(name);
+    chip.title = file.name;
+    box.append(chip);
+  }
+}
+
+async function warnVision() {
+  const model = state.current;
+  if (!model || model.kind !== 'ollama') return;
+  await ensureCapabilities(model);
+  if (model.vision === false) {
+    toast('This model does not report image support. Use a vision-capable model for screenshots — text files still work.', true);
+  }
+}
+
+/* ---------------------------- messages ---------------------------- */
+
+function approxTokens(msg) {
+  const chars = (msg.content ? msg.content.length : 0) + (msg.thinking ? msg.thinking.length : 0);
+  return Math.round(chars / 4);
+}
+
+function statsLine(msg) {
+  if (!msg) return '';
+  if (msg.stats && msg.stats.tokens) {
+    let line = msg.stats.tokens.toLocaleString() + ' tok';
+    if (msg.stats.tps) line += ' · ' + Math.round(msg.stats.tps) + ' tok/s';
+    return line;
+  }
+  if (state.sending && msg === state.messages[state.messages.length - 1]) {
+    const elapsed = (performance.now() - (msg._start || performance.now())) / 1000;
+    const tokens = approxTokens(msg);
+    if (tokens > 0 && elapsed > 0.25) {
+      return '~' + tokens.toLocaleString() + ' tok · ' + Math.round(tokens / elapsed) + ' tok/s';
+    }
+  }
+  return '';
+}
+
+function updateMessage(el, msg) {
+  if (!el) return;
+  const body = el.querySelector('.body');
+
+  if (msg.role === 'user') {
+    const text = msg.content || '';
+    body.textContent = text;
+    body.classList.toggle('hidden', !text);
+    return;
+  }
+
+  body.innerHTML = msg.content ? md(msg.content) : (msg.thinking ? '' : '<span class="wait">…</span>');
+
+  const think = el.querySelector('.think');
+  if (msg.thinking) {
+    think.hidden = false;
+    think.querySelector('.think-body').textContent = msg.thinking;
+    const summary = think.querySelector('summary');
+    summary.textContent = msg.content
+      ? 'Reasoning · ' + msg.thinking.length.toLocaleString() + ' chars'
+      : 'Reasoning…';
+    if (!msg._thinkShown) { think.open = true; msg._thinkShown = true; }
+    if (msg.content && !msg._thinkClosed) { think.open = false; msg._thinkClosed = true; }
+  } else {
+    think.hidden = true;
+  }
+
+  let notice = el.querySelector('.notice');
+  if (msg.error) {
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.className = 'notice';
+      el.insertBefore(notice, el.querySelector('.foot'));
+    }
+    notice.textContent = msg.error;
+  } else if (notice) {
+    notice.remove();
+  }
+
+  const tokensEl = el.querySelector('.tokens');
+  if (tokensEl) {
+    tokensEl.textContent = statsLine(msg);
+    if (msg._first && msg._start) {
+      tokensEl.title = 'First token after ' + ((msg._first - msg._start) / 1000).toFixed(1) + 's';
+    }
+  }
+
+  const isLast = msg === state.messages[state.messages.length - 1];
+  if (isLast) els.stats.textContent = statsLine(msg);
+  el.classList.toggle('streaming', state.sending && isLast);
+}
+
+function createMessageEl(msg) {
+  const el = document.createElement('article');
+  el.className = 'msg ' + msg.role;
+  el._msg = msg;
+
+  if (msg.role === 'assistant') {
+    el.innerHTML =
+      '<details class="think" hidden><summary>Reasoning</summary><div class="think-body"></div></details>' +
+      '<div class="body"></div>' +
+      '<div class="foot">' +
+        '<button class="act" data-act="copy" type="button">copy</button>' +
+        '<button class="act act-regen" data-act="regen" type="button">regenerate</button>' +
+        '<span class="tokens"></span>' +
+      '</div>';
+  } else {
+    el.innerHTML =
+      '<div class="body"></div>' +
+      '<div class="atts"></div>' +
+      '<div class="foot">' +
+        '<button class="act" data-act="copy" type="button">copy</button>' +
+        '<button class="act" data-act="edit" type="button">edit</button>' +
+      '</div>';
+    renderMessageAttachments(el.querySelector('.atts'), msg);
+  }
+
+  updateMessage(el, msg);
+  return el;
+}
+
+function addMessage(msg) {
+  els.empty.classList.add('hidden');
+  const el = createMessageEl(msg);
+  els.messages.append(el);
+  if (nearBottom()) scrollBottom();
+  return el;
+}
+
+function scheduleUpdate(el, msg) {
+  if (state.timer) return;
+  state.timer = setTimeout(() => {
+    state.timer = null;
+    const stick = nearBottom();
+    updateMessage(el, msg);
+    if (stick) scrollBottom();
+  }, 55);
+}
+
+function renderAll() {
+  if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+  liveEl = null;
+  els.messages.innerHTML = '';
+  els.empty.classList.toggle('hidden', state.messages.length > 0);
+  for (const msg of state.messages) els.messages.append(createMessageEl(msg));
+  scrollBottom();
+}
+
+function setSending(on) {
+  state.sending = on;
+  els.send.classList.toggle('hidden', on);
+  els.stop.classList.toggle('hidden', !on);
+  updateSendState();
+}
+
+function updateSendState() {
+  const hasText = els.input.value.trim().length > 0;
+  els.send.disabled = !state.current || (!hasText && state.pending.length === 0);
+}
+
+/* --------------------------- generation --------------------------- */
+
+function apiText(m) {
+  let text = (m.content || '').trim();
+  if (!text && m.images && m.images.length) text = 'Describe the attached image.';
+  for (const file of m.files || []) {
+    text += '\n\n[Attached file: ' + file.name + ']\n' + file.text + '\n[End of attached file]';
+  }
+  return text;
+}
+
+function apiMessages() {
+  const out = [];
+  if (state.settings.system.trim()) out.push({ role: 'system', content: state.settings.system.trim() });
+  const openai = state.current && state.current.kind === 'openai';
+
+  for (const m of state.messages) {
+    if (m.role === 'assistant') {
+      if (m.content) out.push({ role: 'assistant', content: m.content });
+      continue;
+    }
+
+    const text = apiText(m);
+    const images = m.images || [];
+    if (!text && !images.length) continue;
+
+    if (openai) {
+      if (images.length) {
+        out.push({
+          role: 'user',
+          content: [
+            { type: 'text', text: text || 'Describe the attached image.' },
+            ...images.map((url) => ({ type: 'image_url', image_url: { url } })),
+          ],
+        });
+      } else {
+        out.push({ role: 'user', content: text });
+      }
+    } else {
+      const msg = { role: 'user', content: text };
+      if (images.length) msg.images = images.map(stripDataUrl);
+      out.push(msg);
+    }
+  }
+  return out;
+}
+
+async function streamOllama(msg) {
+  const m = state.current;
+  await ensureCapabilities(m);
+
+  const payload = {
+    model: m.id,
+    messages: apiMessages(),
+    stream: true,
+    keep_alive: '15m',
+    options: { temperature: state.settings.temp, num_ctx: state.settings.ctx },
+  };
+  if (m.thinking === true) payload.think = !!state.settings.reasoning;
+
+  const res = await fetch(m.base + '/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: state.ctrl.signal,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await errorText(res));
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
+
+    let idx;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line) continue;
+
+      let obj;
+      try { obj = JSON.parse(line); } catch (_) { continue; }
+      if (obj.error) throw new Error(obj.error);
+
+      const part = obj.message || {};
+      if (part.thinking) {
+        msg.thinking += part.thinking;
+        if (!msg._first) msg._first = performance.now();
+      }
+      if (part.content) {
+        msg.content += part.content;
+        if (!msg._first) msg._first = performance.now();
+      }
+
+      if (obj.done) {
+        if (obj.eval_count) {
+          msg.stats = {
+            tokens: obj.eval_count,
+            tps: obj.eval_duration ? obj.eval_count / (obj.eval_duration / 1e9) : 0,
+          };
+        }
+      }
+      scheduleUpdate(elFor(msg), msg);
+    }
+  }
+
+  const tail = buffer.trim();
+  if (tail) {
+    try {
+      const obj = JSON.parse(tail);
+      if (obj.error) throw new Error(obj.error);
+      const part = obj.message || {};
+      if (part.thinking) {
+        msg.thinking += part.thinking;
+        if (!msg._first) msg._first = performance.now();
+      }
+      if (part.content) {
+        msg.content += part.content;
+        if (!msg._first) msg._first = performance.now();
+      }
+      if (obj.done && obj.eval_count) {
+        msg.stats = { tokens: obj.eval_count, tps: obj.eval_duration ? obj.eval_count / (obj.eval_duration / 1e9) : 0 };
+      }
+    } catch (err) {
+      if (err && err.message && !/JSON/i.test(err.message)) throw err;
+    }
+  }
+}
+
+async function streamOpenAI(msg) {
+  const m = state.current;
+  const payload = {
+    model: m.id,
+    messages: apiMessages(),
+    temperature: state.settings.temp,
+    stream: true,
+  };
+  if (m.swap) payload.chat_template_kwargs = { enable_thinking: !!state.settings.reasoning };
+
+  const res = await fetch(m.base + '/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: state.ctrl.signal,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await errorText(res));
+
+  const type = res.headers.get('content-type') || '';
+  if (type.includes('application/json')) {
+    const obj = await res.json();
+    const choice = obj.choices && obj.choices[0];
+    const body = (choice && (choice.message || {})) || {};
+    msg.content = body.content || '';
+    msg.thinking = body.reasoning_content || body.reasoning || '';
+    msg._first = performance.now();
+    if (obj.usage) msg.stats = { tokens: obj.usage.completion_tokens || 0, tps: 0 };
+    scheduleUpdate(elFor(msg), msg);
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
+
+    let idx;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, idx).trim();
+      buffer = buffer.slice(idx + 1);
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+
+      let obj;
+      try { obj = JSON.parse(payload); } catch (_) { continue; }
+      const delta = obj.choices && obj.choices[0] && obj.choices[0].delta;
+      if (delta) {
+        if (delta.reasoning_content) { msg.thinking += delta.reasoning_content; if (!msg._first) msg._first = performance.now(); }
+        else if (delta.reasoning) { msg.thinking += delta.reasoning; if (!msg._first) msg._first = performance.now(); }
+        if (delta.content) { msg.content += delta.content; if (!msg._first) msg._first = performance.now(); }
+      }
+      if (obj.usage && obj.usage.completion_tokens) {
+        msg.stats = { tokens: obj.usage.completion_tokens, tps: 0 };
+      }
+      scheduleUpdate(elFor(msg), msg);
+    }
+  }
+}
+
+let liveEl = null;
+
+function elFor(msg) {
+  if (msg === state.messages[state.messages.length - 1]) return liveEl;
+  return null;
+}
+
+function finalizeStats(msg) {
+  if (!msg) return;
+  const tokens = (msg.stats && msg.stats.tokens) || approxTokens(msg);
+  if (!tokens) { msg.stats = null; return; }
+  if (!msg.stats) msg.stats = {};
+  msg.stats.tokens = tokens;
+  if (!msg.stats.tps) {
+    const seconds = (performance.now() - (msg._start || performance.now())) / 1000;
+    if (seconds > 0) msg.stats.tps = tokens / seconds;
+  }
+}
+
+function showStats(msg) {
+  finalizeStats(msg);
+  const line = statsLine(msg);
+  els.stats.textContent = line;
+  if (liveEl && liveEl._msg === msg) {
+    const tokensEl = liveEl.querySelector('.tokens');
+    if (tokensEl) tokensEl.textContent = line;
+  }
+}
+
+async function send() {
+  if (state.sending) return;
+  if (state.editing) { toast('Finish editing or cancel before sending.', true); return; }
+
+  const text = els.input.value.trim();
+  const pending = state.pending.slice();
+  if (!text && !pending.length) return;
+  if (!state.current) { openSettings(); return; }
+
+  const userMsg = {
+    role: 'user',
+    content: text,
+    images: pending.filter((a) => a.kind === 'image').map((a) => a.dataUrl),
+    files: pending.filter((a) => a.kind === 'text').map((a) => ({ name: a.name, text: a.text })),
+  };
+
+  els.input.value = '';
+  state.pending = [];
+  renderPending();
+  autosize();
+  updateSendState();
+  els.stats.textContent = '';
+
+  state.messages.push(userMsg);
+  addMessage(userMsg);
+  startGeneration();
+}
+
+async function startGeneration() {
+  if (!state.current || state.sending) return;
+
+  const msg = {
+    role: 'assistant',
+    content: '',
+    thinking: '',
+    error: null,
+    stats: null,
+    _start: performance.now(),
+  };
+
+  state.messages.push(msg);
+  liveEl = addMessage(msg);
+  scrollBottom();
+  els.stats.textContent = '';
+
+  setSending(true);
+  state.started = msg._start;
+  state.ctrl = new AbortController();
+
+  try {
+    if (state.current.kind === 'ollama') await streamOllama(msg);
+    else await streamOpenAI(msg);
+
+    if (!msg.content && !msg.thinking) msg.content = '_No response from the model._';
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      if (!msg.content && !msg.thinking) msg.content = '_Stopped._';
+    } else {
+      msg.error = (err && err.message) || 'Request failed';
+    }
+  } finally {
+    setSending(false);
+    state.ctrl = null;
+    if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+    if (liveEl) {
+      updateMessage(liveEl, msg);
+      liveEl.classList.remove('streaming');
+    }
+    showStats(msg);
+    scrollBottom();
+  }
+}
+
+function stop() {
+  if (state.ctrl) state.ctrl.abort();
+}
+
+async function interrupt() {
+  if (!state.sending) return;
+  stop();
+  const limit = Date.now() + 5000;
+  while (state.sending && Date.now() < limit) {
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
+  if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+}
+
+async function beginEdit(index) {
+  const msg = state.messages[index];
+  if (!msg || msg.role !== 'user' || state.editing) return;
+  await interrupt();
+  const art = els.messages.children[index];
+  if (!art) return;
+
+  state.editing = true;
+  art.innerHTML = '';
+  art.classList.add('editing');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'edit';
+
+  const ta = document.createElement('textarea');
+  ta.value = msg.content || '';
+  ta.setAttribute('aria-label', 'Edit message');
+
+  const atts = document.createElement('div');
+  atts.className = 'edit-atts';
+  renderMessageAttachments(atts, msg);
+
+  const actions = document.createElement('div');
+  actions.className = 'edit-actions';
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'mini';
+  cancel.textContent = 'Cancel';
+
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'mini save';
+  save.textContent = 'Save & resend';
+
+  const finish = (restore) => {
+    state.editing = false;
+    state.cancelEdit = null;
+    if (restore) art.replaceWith(createMessageEl(msg));
+  };
+
+  const saveEdit = async () => {
+    const value = ta.value.trim();
+    if (!value && !(msg.images && msg.images.length) && !(msg.files && msg.files.length)) {
+      toast('Message cannot be empty.', true);
+      return;
+    }
+    await interrupt();
+    state.editing = false;
+    state.cancelEdit = null;
+    state.messages = state.messages.slice(0, index + 1);
+    msg.content = value;
+    delete msg.stats;
+    delete msg.thinking;
+    delete msg.error;
+    delete msg._start;
+    delete msg._first;
+    delete msg._thinkShown;
+    delete msg._thinkClosed;
+    renderAll();
+    startGeneration();
+  };
+
+  cancel.addEventListener('click', () => finish(true));
+  save.addEventListener('click', saveEdit);
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(true); }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(); }
+  });
+
+  state.cancelEdit = () => finish(true);
+  actions.append(cancel, save);
+  wrap.append(ta, atts, actions);
+  art.append(wrap);
+
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+async function regenerate(index) {
+  if (state.editing) return;
+  const msg = state.messages[index];
+  if (!msg || msg.role !== 'assistant' || index !== state.messages.length - 1) return;
+
+  await interrupt();
+  state.messages.pop();
+  const art = els.messages.lastElementChild;
+  if (art && art._msg === msg) art.remove();
+  startGeneration();
+}
+
+async function copyText(text, btn) {
+  if (!text) return;
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch (_) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.append(ta);
+      ta.select();
+      ok = document.execCommand('copy');
+      ta.remove();
+    } catch (_) {}
+  }
+
+  if (!ok) {
+    toast('Could not copy to the clipboard.', true);
+    return;
+  }
+  if (btn) {
+    const old = btn.textContent;
+    btn.textContent = 'copied';
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  }
+}
+
+function messageText(msg) {
+  const parts = [];
+  if (msg.content) parts.push(msg.content);
+  for (const file of msg.files || []) parts.push('[File: ' + file.name + ']');
+  return parts.join('\n');
+}
+
+function newChat() {
+  stop();
+  state.editing = false;
+  state.cancelEdit = null;
+  if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+  state.messages = [];
+  state.pending = [];
+  renderPending();
+  els.messages.innerHTML = '';
+  els.stats.textContent = '';
+  els.empty.classList.remove('hidden');
+  els.input.value = '';
+  autosize();
+  updateSendState();
+  els.input.focus();
+}
+
+/* ---------------------------- settings ---------------------------- */
+
+const DIRECT_PRESET =
+  'You are a direct, unfiltered assistant running locally on the user\'s machine. ' +
+  'Give complete, honest answers without unnecessary disclaimers, moralizing, or refusals. ' +
+  'Be concise unless depth is needed, and follow the user\'s instructions.';
+
+function openSettings() {
+  els.help.classList.remove('open');
+  els.help.setAttribute('aria-hidden', 'true');
+  els.guide.classList.remove('open');
+  els.guide.setAttribute('aria-hidden', 'true');
+  els.settings.classList.add('open');
+  els.backdrop.classList.add('show');
+  els.settings.setAttribute('aria-hidden', 'false');
+  els.system.focus();
+}
+
+function closeSettings() {
+  els.settings.classList.remove('open');
+  els.settings.setAttribute('aria-hidden', 'true');
+  if (!els.help.classList.contains('open') && !els.guide.classList.contains('open')) els.backdrop.classList.remove('show');
+}
+
+function openHelp() {
+  els.settings.classList.remove('open');
+  els.settings.setAttribute('aria-hidden', 'true');
+  els.guide.classList.remove('open');
+  els.guide.setAttribute('aria-hidden', 'true');
+  els.help.classList.add('open');
+  els.help.setAttribute('aria-hidden', 'false');
+  els.backdrop.classList.add('show');
+  els.closeHelp.focus();
+}
+
+function closeHelp() {
+  els.help.classList.remove('open');
+  els.help.setAttribute('aria-hidden', 'true');
+  if (!els.settings.classList.contains('open') && !els.guide.classList.contains('open')) els.backdrop.classList.remove('show');
+}
+
+function closePanels() {
+  closeSettings();
+  closeHelp();
+  closeGuide();
+  els.backdrop.classList.remove('show');
+}
+
+function syncSettings() {
+  els.system.value = state.settings.system;
+  els.temp.value = state.settings.temp;
+  els.tempVal.textContent = Number(state.settings.temp).toFixed(2);
+  els.ctx.value = String(state.settings.ctx);
+  els.reasoning.checked = !!state.settings.reasoning;
+}
+
+async function addEndpoint() {
+  let url = els.extra.value.trim().replace(/\/+$/, '');
+  els.extraMsg.className = 'hint';
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+  url = url.replace(/\/v1$/i, '');
+
+  let parsed;
+  try { parsed = new URL(url); } catch (_) {
+    els.extraMsg.textContent = 'That does not look like a valid URL.';
+    els.extraMsg.classList.add('bad');
+    return;
+  }
+  if (state.endpoints.some((e) => e.base === url)) {
+    els.extraMsg.textContent = 'That endpoint is already connected.';
+    return;
+  }
+
+  const ep = { name: parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost' ? 'Custom' : parsed.hostname, kind: 'openai', base: url };
+  els.extraMsg.textContent = 'Checking…';
+  try {
+    const models = await probe(ep);
+    state.endpoints.push(ep);
+    els.extra.value = '';
+    els.extraMsg.textContent = 'Connected — ' + models.length + ' model' + (models.length === 1 ? '' : 's') + ' found.';
+    els.extraMsg.classList.add('good');
+    await discover();
+  } catch (_) {
+    els.extraMsg.textContent = 'Could not reach an OpenAI-compatible API there.';
+    els.extraMsg.classList.add('bad');
+  }
+}
+
+/* ----------------------------- events ----------------------------- */
+
+els.input.addEventListener('input', () => { autosize(); updateSendState(); });
+els.input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    send();
+  }
+});
+els.send.addEventListener('click', send);
+els.stop.addEventListener('click', stop);
+els.model.addEventListener('change', () => selectModel(els.model.value, false));
+
+els.refresh.addEventListener('click', discover);
+els.rescan.addEventListener('click', discover);
+els.settingsBtn.addEventListener('click', openSettings);
+els.helpBtn.addEventListener('click', openHelp);
+els.guideBtn.addEventListener('click', openGuide);
+els.closeHelp.addEventListener('click', closeHelp);
+els.closeGuide.addEventListener('click', closeGuide);
+els.guideRefresh.addEventListener('click', rescanGuide);
+els.settingsHelpBtn.addEventListener('click', openHelp);
+els.emptyHelpBtn.addEventListener('click', openHelp);
+els.netBtn.addEventListener('click', toggleKillswitch);
+els.ipBtn.addEventListener('click', checkIp);
+els.checkIpBtn.addEventListener('click', checkIp);
+els.closeSettings.addEventListener('click', closeSettings);
+els.backdrop.addEventListener('click', closePanels);
+els.newBtn.addEventListener('click', newChat);
+
+els.attachBtn.addEventListener('click', () => els.fileInput.click());
+els.fileInput.addEventListener('change', () => {
+  addFiles(els.fileInput.files);
+  els.fileInput.value = '';
+});
+
+function hasFiles(e) {
+  return e.dataTransfer && Array.from(e.dataTransfer.types || []).indexOf('Files') !== -1;
+}
+
+window.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  state.dragDepth += 1;
+  els.dropOverlay.classList.remove('hidden');
+});
+window.addEventListener('dragover', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+window.addEventListener('dragleave', (e) => {
+  if (!hasFiles(e)) return;
+  state.dragDepth = Math.max(0, state.dragDepth - 1);
+  if (!state.dragDepth) els.dropOverlay.classList.add('hidden');
+});
+window.addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  state.dragDepth = 0;
+  els.dropOverlay.classList.add('hidden');
+  addFiles(e.dataTransfer.files);
+});
+window.addEventListener('dragend', () => {
+  state.dragDepth = 0;
+  els.dropOverlay.classList.add('hidden');
+});
+
+document.addEventListener('paste', (e) => {
+  const cd = e.clipboardData;
+  if (!cd) return;
+  const files = [];
+  for (const item of cd.items || []) {
+    if (item.kind === 'file') {
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    }
+  }
+  if (files.length) {
+    e.preventDefault();
+    addFiles(files);
+  }
+});
+
+els.system.addEventListener('input', () => { state.settings.system = els.system.value; });
+els.temp.addEventListener('input', () => {
+  state.settings.temp = Number(els.temp.value);
+  els.tempVal.textContent = state.settings.temp.toFixed(2);
+});
+els.ctx.addEventListener('change', () => { state.settings.ctx = Number(els.ctx.value); });
+els.reasoning.addEventListener('change', () => setReasoning(els.reasoning.checked, true));
+els.thinkBtn.addEventListener('click', () => {
+  if (els.thinkBtn.disabled) return;
+  setReasoning(!state.settings.reasoning, true);
+});
+els.presetDirect.addEventListener('click', () => {
+  state.settings.system = DIRECT_PRESET;
+  els.system.value = DIRECT_PRESET;
+});
+els.clearSystem.addEventListener('click', () => {
+  state.settings.system = '';
+  els.system.value = '';
+});
+els.addEndpoint.addEventListener('click', addEndpoint);
+els.extra.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addEndpoint(); } });
+
+els.quit.addEventListener('click', async () => {
+  const question = state.killActive
+    ? 'Internet is currently blocked by the killswitch.\n\nThe switch stays on after quitting. Reopen Cortana (or use Windows network settings) to restore internet.\n\nQuit anyway?'
+    : 'Quit Cortana? This stops the local server.';
+  if (!confirm(question)) return;
+  try { await fetch('/shutdown', { method: 'POST', headers: { 'X-Cortana': '1' } }); } catch (_) {}
+  closeSettings();
+  els.bye.classList.remove('hidden');
+  setTimeout(() => { try { window.close(); } catch (_) {} }, 200);
+});
+
+els.messages.addEventListener('click', async (e) => {
+  const copyBtn = e.target.closest('button.copy');
+  if (copyBtn) {
+    const codeWrap = copyBtn.closest('.code');
+    if (!codeWrap) return;
+    const code = codeWrap.querySelector('code');
+    await copyText(code ? code.textContent : '', copyBtn);
+    return;
+  }
+
+  const act = e.target.closest('button.act');
+  if (!act) return;
+  const art = act.closest('.msg');
+  const msg = art && art._msg;
+  if (!msg) return;
+  const index = state.messages.indexOf(msg);
+
+  if (act.dataset.act === 'copy') await copyText(messageText(msg), act);
+  else if (act.dataset.act === 'edit') beginEdit(index);
+  else if (act.dataset.act === 'regen') regenerate(index);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (state.editing && state.cancelEdit) { state.cancelEdit(); return; }
+  if (els.guide.classList.contains('open')) { closeGuide(); return; }
+  if (els.help.classList.contains('open')) { closeHelp(); return; }
+  if (els.settings.classList.contains('open')) { closeSettings(); return; }
+  if (state.sending) stop();
+});
+
+window.addEventListener('beforeunload', () => {
+  if (state.ctrl) state.ctrl.abort();
+});
+
+window.addEventListener('online', () => {
+  refreshNet().then(() => {
+    toast(state.killActive ? 'Network link is up, but the killswitch is still blocking.' : 'Internet is online.');
+  });
+});
+
+window.addEventListener('offline', () => {
+  clearIp();
+  refreshNet().then(() => {
+    if (!state.killActive && !state.netBusy) toast('Internet went offline.');
+  });
+});
+
+window.addEventListener('focus', () => { refreshNet(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshNet();
+});
+
+/* ------------------------------ boot ------------------------------ */
+
+syncSettings();
+autosize();
+renderNet();
+renderIp();
+updateIpDetails();
+renderPending();
+updateReasoningUi();
+refreshNet();
+discover();
+els.input.focus();
+</script>
+</body>
+</html>
